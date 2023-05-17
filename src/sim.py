@@ -11,22 +11,23 @@ import math
 from sys import path
 path.append(".")
 from src.velocity_field import VelocityField
+from src.desired_pdf import Desired_PDF
 
 
 
-def dXdt(t,X: np.ndarray,f_R: Callable[[float],float], h: float,D: float) -> np.ndarray:
+def dXdt(t,X: np.ndarray,VF: VelocityField,h) -> np.ndarray:
+    print(t)
     X = X.reshape(-1,2)
     X = torch.from_numpy(X)
-    VF = VelocityField(f_R,h,D)
     dXdt = np.empty_like(X)
     for i,x in enumerate(X):
         dXdt[i,:] = VF(x,X).numpy()
     return dXdt.reshape(-1)
 
 
-def sim(f_R: Callable[[float],float], h: float,D: float):
-    X0 = (4*torch.rand(100,2)-2).reshape(-1)
-    sol = solve_ivp(dXdt,y0=X0,t_span=(0,100),args=(f_R,h,D))
+def sim(VF: VelocityField):
+    X0 = (4*torch.rand(100,2)).reshape(-1)
+    sol = solve_ivp(dXdt,y0=X0,t_span=(0,100),args=(VF,1))
     
     return sol.t,sol.y
     
@@ -35,8 +36,8 @@ def viz(t,y):
     fig = plt.figure() 
    
     # marking the x-axis and y-axis
-    axis = plt.axes(xlim =(-2,2), 
-                    ylim =(-2, 2)) 
+    axis = plt.axes(xlim =(0,4), 
+                    ylim =(0, 4)) 
   
     # initializing a line variable
     plot, = axis.plot([], [], "*") 
@@ -58,7 +59,7 @@ def viz(t,y):
                      frames = len(t), interval = 20, blit = True)
   
    
-    anim.save('test.mp4',writer = 'ffmpeg', fps = 1)
+    anim.save('test.mp4',writer = 'ffmpeg', fps = 10)
     
 
 
@@ -67,24 +68,20 @@ def viz(t,y):
 
 
 if __name__ == "__main__":
-    def f_R(x):
-        return 1/torch.pi if torch.norm(x,2) < 1 else 0
+    device = "mps" if torch.backends.mps.is_available() else "cpu"
+    device = "cpu"
+    X = torch.randn((100,2),device=device)
+    r = X[0]
     
-        
-    #h = 4/20
-    #D = 5
-    #t,y = sim(f_R,h,D)
-    #print(y.shape)
-    #viz(t,y)
+    L=4
+    f_R = Desired_PDF("images/lena.jpg",L,device)
+    h = 4/20
+    D = 5
 
-     #test derivative 
-    def f(x):
-        return torch.Tensor(1) if torch.norm(x,2) < 1 else torch.Tensor(0)
-    
-    def grad(x):
-        return torch.Tensor(1)
-    
-    x = torch.rand(2,requires_grad=True,grad_fn=grad)
-    print(x.grad_fn)
-    grad = torch.autograd.grad(f(x),x)
+    VF = VelocityField(f_R,h,D).to(device)
+    t,y = sim(VF)
+    print("sim done")
+    viz(t,y)
+
+   
     

@@ -9,40 +9,10 @@ from sys import path
 path.append(".")
 
 from src.kde import GAUS_KDE
+from src.desired_pdf import Desired_PDF
 
-def calculate_VF(X: torch.Tensor, f_R: Callable[[float],float], h: float,D: float) -> torch.Tensor:
-    """
-    Calculates the velocoty field from the paper.
-
-    X: Tensor of shape N,d with all sampels 
-    f_R: The desired PDF
-    D: Diffusion parameter
-    h: Smoothing parameter for density estimation
-
-    returns: Tensor of shape N,2 where row i is the VF of r_i
-    """
-    N,d = X.shape
-    KDE = GAUS_KDE()
-    
-    device = "cpu" #some bug with float32
-    V = torch.zeros((N,d))
-
-    for i in range(N):
-        X.type(torch.float32)
-        r = Variable(X[i].clone().type(torch.float32),requires_grad=True)
-        r = r.to(device)
-        X = X.to(device)
-
-        f_hat = gausian_kde(r,X,h) 
-        phi = f_hat - f_R(r)
-        grad = torch.autograd.grad(phi,r)[0]
-        V[i] = -D*grad/f_hat
-
-    return V.detach()
-    
-   
 class VelocityField(nn.Module):
-    def __init__(self,f_R: Callable[[torch.Tensor],torch.Tensor], h: float,D: float) -> None:
+    def __init__(self,f_R: Desired_PDF, h: float,D: float) -> None:
         super().__init__()
         self.f_R = f_R
         self.KDE = GAUS_KDE(h)
@@ -57,10 +27,8 @@ class VelocityField(nn.Module):
         """
         r = Variable(r.clone(),requires_grad=True)
         f_hat = self.KDE(r,X)
-        f_d = self.f_R(r)
-        phi = f_hat - f_d
-        grad = torch.autograd.grad(phi,r)[0]
-        return -self.D*grad/f_hat.detach()
+        phi_grad = torch.autograd.grad(f_hat,r)[0] - self.f_R.grad(r)
+        return -self.D*phi_grad/f_hat.detach()
 
 
     
@@ -68,22 +36,16 @@ class VelocityField(nn.Module):
 if __name__ == "__main__":
     device = "mps" if torch.backends.mps.is_available() else "cpu"
     X = torch.randn((100,2),device=device)
+    r = X[0]
     
-    def f_R(x):
-        return 1/torch.pi if torch.norm(x,p=2) < 1 else 0
+    f_R = Desired_PDF("images/lena.jpg",1,device)
+    grad = f_R.grad(r)
+    print(grad)
     
     VF = VelocityField(f_R,1/2,1/20).to(device)(X[0],X)
     print(VF)
 
-    #test derivative 
-    def f(x):
-        return 1 if torch.norm(x,2) < 1 else 0
-    
-    x = torch.rand(2,requires_grad=True)
-    y = f(x)
-    y.backward()
-    print(x.grad.data)
-    
+   
 
     
     
