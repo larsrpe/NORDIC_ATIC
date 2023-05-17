@@ -1,4 +1,5 @@
 import torch
+import torch.nn as nn
 from typing import Callable
 from torch.autograd import Variable
 from torch.autograd import grad
@@ -7,7 +8,7 @@ from sys import path
 
 path.append(".")
 
-from src.kde import gausian_kde
+from src.kde import GAUS_KDE
 
 def calculate_VF(X: torch.Tensor, f_R: Callable[[float],float], h: float,D: float) -> torch.Tensor:
     """
@@ -21,7 +22,8 @@ def calculate_VF(X: torch.Tensor, f_R: Callable[[float],float], h: float,D: floa
     returns: Tensor of shape N,2 where row i is the VF of r_i
     """
     N,d = X.shape
-    device = "mps" if torch.backends.mps.is_available() else "cpu"
+    KDE = GAUS_KDE()
+    
     device = "cpu" #some bug with float32
     V = torch.zeros((N,d))
 
@@ -39,15 +41,43 @@ def calculate_VF(X: torch.Tensor, f_R: Callable[[float],float], h: float,D: floa
     return V.detach()
     
    
+class VelocityField(nn.Module):
+    def __init__(self,f_R: Callable[[torch.Tensor],torch.Tensor], h: float,D: float) -> None:
+        super().__init__()
+        self.f_R = f_R
+        self.KDE = GAUS_KDE(h)
+        self.D = D
 
+    def forward(self,r,X):
+        """
+        r: Tensor of shape
+        X: Tensor of shape N,d with all sampels 
+
+        returns the velocity field at r
+        """
+        r = Variable(r.clone(),requires_grad=True)
+        f_hat = self.KDE(r,X)
+        f_d = self.f_R(r)
+        phi = f_hat - f_d
+        grad = torch.autograd.grad(phi,r)[0]
+        return -self.D*grad/f_hat.detach()
+
+
+    
 
 if __name__ == "__main__":
-    X = torch.randn((100,2))
+    device = "mps" if torch.backends.mps.is_available() else "cpu"
+    X = torch.randn((100,2),device=device)
     
-    def f_r(x):
-        return 1
+    def f_R(x):
+        return 1/torch.pi if torch.norm(x,p=2) < 1 else 0
     
-    calculate_VF(X,f_r,0.5,5)
+    VF = VelocityField(f_R,1/2,1/20).to(device)(X[0],X)
+    print(VF)
+
+    
+    
+
 
 
 
