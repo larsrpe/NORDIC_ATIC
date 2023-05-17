@@ -43,4 +43,11 @@ class Desired_PDF:
 
 
 class Gaus_Desired_PDF:
-    def eval(self,r: torch.Tensor) -> torch.Tensor:)
+    def __init__(self,device) -> None:
+        self.device = device
+    def eval(self,r: torch.Tensor) -> torch.Tensor:
+        r = r.clone().detach()
+        return (1/np.sqrt(2*np.pi)*torch.exp(-torch.square(torch.norm(r-torch.Tensor([2,2]),2))/2)).to(self.device)
+    def grad(self,r: torch.Tensor) -> torch.Tensor:
+        r = r.clone().detach()
+        return (-self.eval(r)*(r-torch.Tensor([2,2]))).to(self.device)
