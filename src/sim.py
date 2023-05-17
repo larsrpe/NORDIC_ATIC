@@ -21,13 +21,20 @@ def dXdt(t,X: np.ndarray,VF: VelocityField,h) -> np.ndarray:
     X = torch.from_numpy(X)
     dXdt = np.empty_like(X)
     for i,x in enumerate(X):
-        dXdt[i,:] = VF(x,X).numpy()
+        u = VF(x,X).numpy()
+        #print(np.linalg.norm(u))
+        dXdt[i,:] = grad_clip(u,0.1)
     return dXdt.reshape(-1)
 
+def grad_clip(grad,max):
+    norm = np.linalg.norm(grad)
+    if norm > max:
+        return grad/norm*max
+    return grad
 
-def sim(VF: VelocityField):
-    X0 = (4*torch.rand(100,2)).reshape(-1)
-    sol = solve_ivp(dXdt,y0=X0,t_span=(0,100),args=(VF,1))
+
+def sim(VF: VelocityField,X0,t_eval):
+    sol = solve_ivp(dXdt,y0=X0.reshape(-1),t_span=(0,100),args=(VF,1),method="RK23",t_eval=t_eval)
     
     return sol.t,sol.y
     
@@ -36,8 +43,8 @@ def viz(t,y):
     fig = plt.figure() 
    
     # marking the x-axis and y-axis
-    axis = plt.axes(xlim =(0,4), 
-                    ylim =(0, 4)) 
+    axis = plt.axes(xlim =(0,0.5), 
+                    ylim =(0,0.5)) 
   
     # initializing a line variable
     plot, = axis.plot([], [], "*") 
@@ -70,16 +77,17 @@ def viz(t,y):
 if __name__ == "__main__":
     device = "mps" if torch.backends.mps.is_available() else "cpu"
     device = "cpu"
-    X = torch.randn((100,2),device=device)
-    r = X[0]
     
-    L=4
+    N=100
+    X0 = (0.5*torch.rand(N,2))
+    L=0.5
     f_R = Desired_PDF("images/lena.jpg",L,device)
-    h = 4/20
+    h = L/20
     D = 5
 
     VF = VelocityField(f_R,h,D).to(device)
-    t,y = sim(VF)
+    t_eval = np.linspace(0,100,101,endpoint=True)
+    t,y = sim(VF,X0,t_eval)
     print("sim done")
     viz(t,y)
 

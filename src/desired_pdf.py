@@ -39,4 +39,8 @@ class Desired_PDF:
         y = r[1].item()
         #assert 0 <= x <= self.x_dim
         #assert 0 <= y <= self.y_dim
-        return torch.Tensor([self.f_nablax(x, y)[0][0],self.f_nablay(x,y)[0][0]]).reshape(-1).to(self.device)
+        return torch.Tensor([self.f_nablax(x, y)[0][0],self.f_nablay(x,y)[0][0]]).reshape(-1).to(self.device)/self.f_interp_int
+
+
+class Gaus_Desired_PDF:
+    def eval(self,r: torch.Tensor) -> torch.Tensor:)
