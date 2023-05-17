@@ -75,6 +75,16 @@ if __name__ == "__main__":
     VF = VelocityField(f_R,1/2,1/20).to(device)(X[0],X)
     print(VF)
 
+    #test derivative 
+    def f(x):
+        return 1 if torch.norm(x,2) < 1 else 0
+    
+    x = torch.rand(2,requires_grad=True)
+    y = f(x)
+    y.backward()
+    print(x.grad.data)
+    
+
     
     
 
