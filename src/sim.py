@@ -71,8 +71,20 @@ if __name__ == "__main__":
         return 1/torch.pi if torch.norm(x,2) < 1 else 0
     
         
-    h = 1/20
-    D = 5
-    t,y = sim(f_R,h,D)
-    print(y.shape)
-    viz(t,y)
+    #h = 4/20
+    #D = 5
+    #t,y = sim(f_R,h,D)
+    #print(y.shape)
+    #viz(t,y)
+
+     #test derivative 
+    def f(x):
+        return torch.Tensor(1) if torch.norm(x,2) < 1 else torch.Tensor(0)
+    
+    def grad(x):
+        return torch.Tensor(1)
+    
+    x = torch.rand(2,requires_grad=True,grad_fn=grad)
+    print(x.grad_fn)
+    grad = torch.autograd.grad(f(x),x)
+    
