@@ -1,32 +1,43 @@
 import torch
+import torch.nn as nn
 from dataclasses import dataclass
 
 
 
-
-def gausian_kde(r: torch.Tensor, X: torch.Tensor,h: float) -> float:
+class GAUS_KDE(nn.Module):
     """
     Implements kde estimator with gausian kernel.
-
-    r: Tensor of shape d 
-    X: Tensor of shape N,d with all sampels 
     h: Smoothing parameter
-
-    retuns: estimated density at point r
     """
-    N,d = X.shape
-    dist_mat =torch.cdist(X,r.reshape(1,-1))
-    K_mat = torch.exp(-2/(h**2)*torch.square(dist_mat))*2/torch.pi
-    f_hat =  1/(N*h**d)*torch.sum(K_mat,dim=0)
+    def __init__(self,h: float) -> None:
+        super().__init__()
+        self.h=h
+    
+    def forward(self,r: torch.Tensor, X: torch.Tensor):
+        """
+        r: Tensor of shape d 
+        X: Tensor of shape N,d with all sampels 
+        retuns: estimated density at point r
+        """
 
-    return f_hat
+        N,d = X.shape
+        dist_vec =torch.cdist(X,r.reshape(1,-1))
+        K_vec = torch.exp(-2/(self.h**2)*torch.square(dist_vec))*2/torch.pi
+        f_hat =  1/(N*self.h**d)*torch.sum(K_vec,dim=0)
+        return f_hat
+
+        
+
 
 
 if __name__ == "__main__":
-    X = torch.randn((100,2))
+    X = torch.randn((100,2),requires_grad=True)
     r = X[0]
-    f = gausian_kde(r,X,1/2)
-    print(f.shape)
+    f = GAUS_KDE(1/2)(r,X)
+    print(f)
+
+
+
 
 
 
