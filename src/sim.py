@@ -11,7 +11,7 @@ import math
 from sys import path
 path.append(".")
 from src.velocity_field import VelocityField
-from src.desired_pdf import Desired_PDF
+from src.desired_pdf import Desired_PDF, Gaus_Desired_PDF
 
 
 
@@ -43,8 +43,8 @@ def viz(t,y):
     fig = plt.figure() 
    
     # marking the x-axis and y-axis
-    axis = plt.axes(xlim =(0,0.5), 
-                    ylim =(0,0.5)) 
+    axis = plt.axes(xlim =(0,4), 
+                    ylim =(0,4)) 
   
     # initializing a line variable
     plot, = axis.plot([], [], "*") 
@@ -66,7 +66,7 @@ def viz(t,y):
                      frames = len(t), interval = 20, blit = True)
   
    
-    anim.save('test.mp4',writer = 'ffmpeg', fps = 10)
+    anim.save('test1.mp4',writer = 'ffmpeg', fps = 10)
     
 
 
@@ -78,10 +78,11 @@ if __name__ == "__main__":
     device = "mps" if torch.backends.mps.is_available() else "cpu"
     device = "cpu"
     
-    N=100
-    X0 = (0.5*torch.rand(N,2))
-    L=0.5
+    N=1000
+    X0 = (4*torch.rand(N,2))
+    L=4
     f_R = Desired_PDF("images/lena.jpg",L,device)
+    f_R = Gaus_Desired_PDF(device)
     h = L/20
     D = 5
 
