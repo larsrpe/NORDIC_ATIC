@@ -9,10 +9,9 @@ from sys import path
 path.append(".")
 
 from src.kde import GAUS_KDE
-from src.desired_pdf import Desired_PDF
 
 class VelocityField(nn.Module):
-    def __init__(self,f_R: Desired_PDF, h: float,D: float) -> None:
+    def __init__(self, f_R, h: float, D: float) -> None:
         super().__init__()
         self.f_R = f_R
         self.KDE = GAUS_KDE(h)

@@ -1,14 +1,17 @@
 import torch
 import numpy as np
+from typing import Callable
 from scipy.integrate import solve_ivp
 import matplotlib.pyplot as plt
-from matplotlib.animation import FuncAnimation, FFMpegWriter
+from matplotlib.animation import FuncAnimation, PillowWriter, FFMpegWriter
 from functools import partial
+import time
+import math
 
 from sys import path
 path.append(".")
 from src.velocity_field import VelocityField
-from src.desired_pdf import GMM_PDF
+from src.desired_pdf import Desired_PDF, GMM_PDF
 
 
 
@@ -64,7 +67,7 @@ def viz(t,y):
                      frames = len(t), interval = 20, blit = True)
   
     writer = FFMpegWriter(fps = 5)
-    anim.save('test.mp4',writer = writer)
+    anim.save('test1.mp4',writer = writer)
     
 
 if __name__ == "__main__":
@@ -94,3 +97,6 @@ if __name__ == "__main__":
     t,y = sim(VF,X0,t_eval)
     print("sim done")
     viz(t,y)
+
+   
+    
