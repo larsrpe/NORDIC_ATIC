@@ -1,6 +1,7 @@
 import torch
 from torch import nn
 import math
+from PIL import Image, ImageOps
 import time
 import numpy as np
 import matplotlib.pyplot as plt
@@ -12,6 +13,7 @@ from abc import ABC, abstractmethod
 from typing import Callable, Tuple
 
 from functools import cached_property
+from torchvision import transforms
 
 class TimevaryingParams(nn.Module):
     def __init__(self,param_t: Callable[[float], torch.Tensor], param_dot: Callable[[float], torch.Tensor]) -> None:
@@ -85,10 +87,31 @@ class GausianPDF:
         g = self.eval(t,x)*self._mu_dot(t)
         return g
     
-    @abstractmethod
-    def get_g_and_grad(self,t: float, x: torch.Tensor) -> Tuple[torch.Tensor,torch.Tensor]:
-        pass
-    
+def image_to_pdf_args(image, L: float)-> torch.Tensor:
+
+    image = Image.open(f'images/{image}.png')
+    image = ImageOps.grayscale(image)
+    convert_tensor = transforms.ToTensor()
+    image = convert_tensor(image)
+
+    #transform gjør at vi kanskje ikke må flippe bildet selv?
+    image= torch.flipud(image/255)
+    image = 1 - image
+    x_dim = image.shape[1]
+    y_dim = image.shape[2]
+
+    weights = image/torch.sum(image)
+    weights = weights.reshape((x_dim,y_dim))
+
+    x = torch.linspace(0,L,x_dim)
+    y = torch.linspace(0,L,y_dim)
+    x_grid,y_grid = torch.meshgrid(x,y,indexing='xy')
+    grid = torch.cat((x_grid,torch.flipud(y_grid)))
+    grid = grid.reshape((2,x_dim,y_dim))
+
+    return grid, weights
+
+
 
 
 class GridGMM(TimevaryingPDF):
