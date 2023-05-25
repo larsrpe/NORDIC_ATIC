@@ -2,6 +2,9 @@ import torch
 from torch import nn
 import math
 import time
+import numpy as np
+import matplotlib.pyplot as plt
+
 
 from scipy.spatial import KDTree
 
@@ -34,6 +37,9 @@ class TimevaryingPDF(nn.Module,ABC):
         pass
     @abstractmethod
     def g(self,t: float, x: torch.Tensor) -> torch.Tensor:
+        pass
+    @abstractmethod
+    def get_g_and_grad(self,t: float, x: torch.Tensor) -> Tuple[torch.Tensor,torch.Tensor]:
         pass
 
 
@@ -111,15 +117,6 @@ class GridGMM(TimevaryingPDF):
         square_dist = torch.bmm(dist.view(n, 1, self.d), dist.view(n, self.d, 1)).flatten()
         return torch.dot(1/(2*math.pi)*torch.exp(-1/2*square_dist),weights_t)
     
-    def grad(self, t: float, x: torch.Tensor) -> torch.Tensor:
-        means,weights_t,_= self.get_nn(t,x)
-        n = means.shape[0]
-        dist = x - means
-        square_dist = torch.bmm(dist.view(n, 1, self.d), dist.view(n, self.d, 1)).reshape(-1,1)
-        exp = 1/(2*math.pi)*torch.exp(-1/2*square_dist)
-        return (exp*dist).T@weights_t
-
-
     def dot(self, t: float, x: torch.Tensor) -> torch.Tensor:
         means,_,weights_dot_t= self.get_nn(t,x)
         n = means.shape[0]
@@ -127,12 +124,21 @@ class GridGMM(TimevaryingPDF):
         square_dist = torch.bmm(dist.view(n, 1, self.d), dist.view(n, self.d, 1)).flatten()
         return torch.dot(1/(2*math.pi)*torch.exp(-1/2*square_dist),weights_dot_t)
         
+
+    def grad(self, t: float, x: torch.Tensor) -> torch.Tensor:
+        means,weights_t,_= self.get_nn(t,x)
+        n = means.shape[0]
+        dist = x - means
+        square_dist = torch.bmm(dist.view(n, 1, self.d), dist.view(n, self.d, 1)).reshape(-1,1)
+        exp = 1/(2*math.pi)*torch.exp(-1/2*square_dist)
+        return (exp*dist).T@weights_t
+        
     def g(self, t: float, x: torch.Tensor) -> torch.Tensor:
         means,_,weights_dot_t= self.get_nn(t,x)
         n = means.shape[0]
         dist = x - means
         square_dist = torch.bmm(dist.view(n, 1, self.d), dist.view(n, self.d, 1)).reshape(-1,1)
-        exp =1/(2*math.pi)*torch.exp(-1/2*square_dist)
+        exp = 1/(2*math.pi)*torch.exp(-1/2*square_dist)
         norm_dist = dist/square_dist.view(n,1)
         g = (norm_dist*exp).T@weights_dot_t
         return g
@@ -142,29 +148,41 @@ class GridGMM(TimevaryingPDF):
         n = means.shape[0]
         dist = x - means
         square_dist = torch.bmm(dist.view(n, 1, self.d), dist.view(n, self.d, 1)).reshape(-1,1)
-        exp_dist = 1/(2*math.pi)*torch.exp(-1/2*square_dist)*dist
-        grad = (exp_dist).T@weights_t
-        g = (exp_dist/square_dist.view(n,1)).T@weights_dot_t
+        exp = 1/(2*math.pi)*torch.exp(-1/2*square_dist)
+        grad = (exp*dist).T@weights_t
+        norm_dist = dist/square_dist.view(n,1)
+        g = (norm_dist*exp).T@weights_dot_t
         return g,grad
 
-
+    def plot(self,t:float,points: int,filename: str):
+        xs = torch.linspace(0,L,steps=points)
+        ys = torch.linspace(0,L,steps=points)
+        z = torch.zeros(points,points)
+        for j,x in enumerate(xs):
+            for i,y in enumerate(ys):
+                z[points-1-i,j] = self.eval(t,torch.tensor([x,y]))
+        z = z.numpy()
+        plt.matshow(z)
+        plt.savefig("./images/"+filename)
+        
 
 if __name__ == "__main__":
     device = "mps"
 
     size = 40
-    L = 10
-
+    L = 15
+    rand =torch.rand(size,size)
+    w = rand/rand.sum()
     def weights(t:float) -> torch.Tensor:
-        rand =torch.rand(size,size)
-        return rand/rand.sum()
+        return torch.tensor([0.25,0.25,0.25,0.25]).reshape(2,2)
+        
     
     def weights_dot(t:float) -> torch.Tensor:
-        return torch.zeros(size,size)
+        return w
     
     params = TimevaryingParams(weights,weights_dot)
 
-    means = torch.rand(size,size,2)*10
+    means = torch.tensor([[3,3],[12,12], [12,3],[3,12]]).reshape(2,2,2)
 
     GMM = GridGMM(means,params,L)
 
@@ -173,6 +191,5 @@ if __name__ == "__main__":
     a= GMM.grad(0,x)
     b= GMM.g(0,x)
     c,d = GMM.get_g_and_grad(0,x)
-    print(a,d)
-    print(b,c)
-    print(time.time()-t)
+    
+    GMM.plot(0,100,"test.jpg")
