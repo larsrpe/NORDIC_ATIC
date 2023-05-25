@@ -2,11 +2,11 @@ import numpy as np
 import torch
 
 from scipy.integrate import dblquad
-from src.kde import GAUS_KDE
+from kde import Gaussian_KDE
+from densities import Gaussian_PDF 
 
-
-def eval_exp(Y, T, f_R_d, h):
-    KDE = GAUS_KDE(h)
+def eval_exp(Y: np.ndarray, T: np.ndarray, f_R_d: Gaussian_PDF, h: float) -> np.ndarray:
+    KDE = Gaussian_KDE(h)
     Y = torch.from_numpy(Y)
 
     f_R_hat_t = lambda x, y, t: KDE(torch.Tensor([x, y]).to(torch.double), Y[:, t].reshape(-1, 2)).item()
@@ -14,5 +14,4 @@ def eval_exp(Y, T, f_R_d, h):
     E_t = lambda t: dblquad(lambda x, y: np.absolute(f_R_hat_t(x, y, t) - f_R_d_t(x, y, t)), 0, 15, 0, 15, epsabs=1.49e-1, epsrel=1.49e-1)[0]
 
     idt = np.arange(0, len(T))
-    E = np.vectorize(E_t)(idt)
-    return E
+    return np.vectorize(E_t)(idt)
