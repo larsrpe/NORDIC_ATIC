@@ -46,7 +46,7 @@ class TimevaryingPDF(nn.Module,ABC):
 
 
 
-class GausianPDF:
+class Gaussian_PDF:
     def __init__(self,sigma,t_0,T,mu_0,mu_T) -> None:
         self.t_0 = t_0
         self.T = T
