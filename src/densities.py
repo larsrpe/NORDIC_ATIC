@@ -124,6 +124,39 @@ class GridGMM(TimevaryingPDF):
     
         return cls(means,params,L)
 
+    @classmethod
+    def showtime(cls, im1: str, im2: str, size: Tuple, t0:float, T:float, L:float)-> "GridGMM":
+        """
+        im1: start image
+        im2: end image
+        size: Tuple of desired image resolution
+        t0: start of transition
+        T: end of transition
+        L: 
+        """
+        means,w1 =image_to_pdf_args(im1,L,size)
+        _,w2 =image_to_pdf_args(im2,L,size)
+        w1 = w1.double()
+
+        def param_weights(t:float)-> torch.Tensor:
+            if t <=t0:
+                return w1
+            if t > T:
+                return w2
+            
+            return (1 - (t-t0)/(T-t0)) * w1 + (t-t0)/(T-t0) * w2
+
+        def param_weights_dot(t:float)-> torch.Tensor:
+            if t <=t0:
+                return torch.zeros_like(w1)
+            if t > T:
+                return torch.zeros_like(w2)
+        
+            return - w1 + w2
+
+        params = TimevaryingParams(param_weights,param_weights_dot)
+        return cls(means, params, L)
+
 
     def get_nn(self,t: float, x: torch.Tensor) -> Tuple[torch.Tensor,torch.Tensor,torch.Tensor]:
         x,y = x[0].item(),x[1].item()
@@ -210,7 +243,7 @@ class GridGMM(TimevaryingPDF):
 
 def image_to_pdf_args(image:str, L: float)-> Tuple[torch.Tensor,torch.Tensor]:
 
-    image = Image.open(f'images/{image}.png')
+    image = Image.open(f'images/{image}')
     image = expand2square(image,"white")
     image = image.resize((256,256))
     image = ImageOps.grayscale(image)
