@@ -33,7 +33,7 @@ class VelocityField(ControlField):
         r = Variable(r.clone(),requires_grad=True)
         f_hat = self.KDE(r,X)
         phi_grad = torch.autograd.grad(f_hat,r)[0] - self.f_d.grad(t,r)
-        return -self.D*phi_grad/f_hat.detach()
+        return (-self.D*phi_grad/f_hat).detach()
 
 class LarsField(ControlField):
     
