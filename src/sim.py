@@ -57,8 +57,13 @@ def dXdt(t: float, X: np.ndarray, Field: ControlField,h) -> np.ndarray:
     X = torch.from_numpy(X)
     dXdt = np.empty_like(X)
     for i,x in enumerate(X):
-        dXdt[i,:] = Field(t,x,X).numpy()
+        dXdt[i,:] = gradclip(Field(t,x,X).numpy(),np.inf)
     return dXdt.reshape(-1)
+
+
+def gradclip(grad: np.ndarray, max: float) -> np.ndarray:
+    norm = np.linalg.norm(grad)
+    return grad if norm<max else grad/norm*max 
 
 def sim(Field: ControlField, X0: torch.Tensor, t_eval: np.ndarray) -> np.ndarray:
     sol = solve_ivp(dXdt, y0=X0.reshape(-1), t_span=(0,t_eval[-1]), args=(Field,1), method="RK23", t_eval=t_eval)

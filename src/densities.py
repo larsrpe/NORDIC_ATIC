@@ -104,8 +104,9 @@ class GridGMM(TimevaryingPDF):
         self.means = means
         self.weights = weights
         self.N,_,self.d = means.shape
-        self.sima_pixels = 4
+        self.sima_pixels = 8
         sigma = self.sima_pixels*(L/self.N)
+        sigma = 1
         self.var = sigma**2
        
     @classmethod
@@ -154,7 +155,7 @@ class GridGMM(TimevaryingPDF):
         n = means.shape[0]
         dist = x - means
         square_dist = torch.bmm(dist.view(n, 1, self.d), dist.view(n, self.d, 1)).reshape(-1,1)
-        exp = 1/(2*math.pi*self.var)*torch.exp(-1/2*square_dist)
+        exp = 1/(2*math.pi*self.var)*torch.exp(-1/(2*self.var)*square_dist)
         return -1/self.var*(exp*dist).T@weights_t
         
     def g(self, t: float, x: torch.Tensor) -> torch.Tensor:
@@ -162,7 +163,7 @@ class GridGMM(TimevaryingPDF):
         n = means.shape[0]
         dist = x - means
         square_dist = torch.bmm(dist.view(n, 1, self.d), dist.view(n, self.d, 1)).reshape(-1,1)
-        exp = 1/(2*math.pi*self.var)*torch.exp(-1/2*square_dist)
+        exp = 1/(2*math.pi*self.var)*torch.exp(-1/(2*self.var)*square_dist)
         norm_dist = dist/square_dist.view(n,1)
         g = (norm_dist*exp).T@weights_dot_t
         return g
@@ -172,7 +173,7 @@ class GridGMM(TimevaryingPDF):
         n = means.shape[0]
         dist = x - means
         square_dist = torch.bmm(dist.view(n, 1, self.d), dist.view(n, self.d, 1)).reshape(-1,1)
-        exp = 1/(2*math.pi*self.var)*torch.exp(-1/2*square_dist)
+        exp = 1/(2*math.pi*self.var)*torch.exp(-1/(2*self.var)*square_dist)
         grad = -1/self.var*(exp*dist).T@weights_t
         norm_dist = dist/square_dist.view(n,1)
         g = (norm_dist*exp).T@weights_dot_t
