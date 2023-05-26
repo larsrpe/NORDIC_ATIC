@@ -6,24 +6,24 @@ from sys import path
 from scipy.integrate import solve_ivp
 from matplotlib.animation import FuncAnimation, FFMpegWriter
 from functools import partial
-from fields import VelocityField, LarsField
+from fields import ControlField
 
 path.append(".")
 
-def dXdt(t: float, X: np.ndarray, VF: VelocityField | LarsField, h: float) -> np.ndarray:
+def dXdt(t: float, X: np.ndarray, Field: ControlField, h: float) -> np.ndarray:
     print(t)
     X = X.reshape(-1,2)
     X = torch.from_numpy(X)
     dXdt = np.empty_like(X)
     for i,x in enumerate(X):
-        dXdt[i,:] = VF(t,x,X).numpy()
+        dXdt[i,:] = Field(t,x,X).numpy()
     return dXdt.reshape(-1)
 
-def sim(VF: VelocityField | LarsField, X0: torch.Tensor, t_eval: np.ndarray) -> np.ndarray:
-    sol = solve_ivp(dXdt, y0=X0.reshape(-1), t_span=(0,t_eval[-1]), args=(VF,1), method="RK23", t_eval=t_eval)
+def sim(Field: ControlField, X0: torch.Tensor, t_eval: np.ndarray) -> np.ndarray:
+    sol = solve_ivp(dXdt, y0=X0.reshape(-1), t_span=(0,t_eval[-1]), args=(Field,1), method="RK23", t_eval=t_eval)
     return sol.t,sol.y
 
-def viz(t,y,L):
+def viz(t,y,L,file_name = "test"):
     fig = plt.figure() 
    
     # marking the x-axis and y-axis
@@ -51,4 +51,4 @@ def viz(t,y,L):
                      frames = len(t), interval = 20, blit = True)
   
     writer = FFMpegWriter(fps = 5)
-    anim.save('sims/test.mp4',writer = writer)
+    anim.save(f'sims/{file_name}.mp4',writer = writer)
