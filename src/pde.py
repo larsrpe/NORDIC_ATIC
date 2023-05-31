@@ -12,9 +12,8 @@ from densities import TimevaryingPDF, TimevaryingParams, GridGMM
 
 
 class ContEQSolver:
-    def __init__(self,L: float, rho: TimevaryingPDF,N:int) -> None:
+    def __init__(self,L: float,N:int) -> None:
         self.L = L
-        self.rho = rho
         self.N = N
         self.h = L/N
         self.G1 = cp.Variable((N+1,N+1))
@@ -91,7 +90,7 @@ class ContEQSolver:
         rhoDIV = rhoDiag@DIV
         
         #grad_rho * V
-        xx,yy = np.meshgrid(self.xs,self.ys)
+        
 
 
         # get border idx 
@@ -103,6 +102,7 @@ class ContEQSolver:
 
         not_border_mask = border_grid.flatten()==0
 
+        xx,yy = np.meshgrid(self.xs,self.ys)
         grad_x = rho_grad_x(xx,yy)
         grad_x_diag = np.diag(grad_x.flatten())
         grad_y = rho_grad_y(xx,yy)
@@ -131,62 +131,9 @@ class ContEQSolver:
     def solve_rho(self,t: float):
         rows,cols = self.N+1,self.N+1
         A,B = self.get_spars_AB()
-        #v_vec = cp.Variable(2*rows*cols)
-        
-        #constr = []
-        
-        #constr+=[A@v_vec==B]
-        #cost = cp.norm2(v_vec)
-
-        #problem = cp.Problem(cp.Minimize(cost),constraints=constr)
-        #sol = problem.solve(verbose=False,canon_backend=cp.SCIPY_CANON_BACKEND)
-        #print(problem.status)
-        #print(sol)
         v_vec = scipy.sparse.linalg.lsqr(A,B)[0]
         self.G1 = v_vec[:rows*cols].reshape(rows,cols)
         self.G2 = v_vec[rows*cols:].reshape(rows,cols)
-
-
-
-
-    def solve(self,t: float):
-        constr = []
-        cost = 0
-        for i in range(1,self.N):
-            for j in range(1,self.N):
-                
-                #compute central difference
-                g1x = (self.G1[j,i+1]-self.G1[j,i-1])/(2*self.h)
-                g1y = (self.G1[j+1,i]-self.G1[j-1,i])/(2*self.h)
-                g2x = (self.G2[j,i+1]-self.G1[j,i-1])/(2*self.h)
-                g2y = (self.G2[j+1,i]-self.G1[j-1,i])/(2*self.h)
-
-                x,y = self.xs[i],self.ys[j]
-                rho_dot = dot(x,y)
-                #contiuety equation
-                constr += [g1x +g2y == -rho_dot]  #,g2x -g1y == 0]
-                #minimize curl
-                #cost += (g1y-g2x)**2 #(g1x+g2y+rho_dot)**2 #+ 
-
-        for j in range(self.N+1):
-            constr += [
-                self.G1[0,j] == 0,
-                self.G1[-1,j] == 0,
-                self.G1[j,0] == 0,
-                self.G1[j,0-1] == 0,
-                self.G2[0,j] == 0,
-                self.G2[-1,j] == 0,
-                self.G2[j,0] == 0,   
-                self.G2[j,-1] ==0
-                ]
-            
-        #minimize norm
-        #cost += cp.pnorm(self.G1) + cp.pnorm(self.G2)
-
-        problem = cp.Problem(cp.Minimize(cost),constraints=constr)
-        sol = problem.solve(verbose=False)
-        print(problem.status)
-        print(sol)
 
     def check_sol(self):
         for i in range(1,self.N):
@@ -274,50 +221,12 @@ def rho_grad_y(x,y):
     return -p1/(2*math.pi*var**2)*np.exp(-1/2*((x-u1[0])**2+(y-u1[1])**2))*(y-u1[1]) -p2/(2*math.pi*var**2)*np.exp(-1/2*((x-u2[0])**2+(y-u2[1])**2))*(y-u2[1])
 
 
-
-def sine_means() -> torch.Tensor:
-    u1 = torch.tensor([3,6])
-    u2 = torch.tensor([L/3,L-L/3])
-    u3 = torch.tensor([L-L/3,L-L/3])
-    u4 =  torch.tensor([6,3])
-    means = torch.zeros(2,2,2)
-    means[0,0,:] = u2
-    means[0,1,:] = u3
-    means[1,1,:] = u4
-    means[1,0,:] = u1
-    return means
-
-def sine_weights(t: float) -> torch.Tensor:
-    w1 = torch.Tensor([[0,0],[0,1]]).double()
-    w2 = torch.Tensor([[1,0],[0,0]]).double()
-
-
-    h=(t)/(T)
-    return (w1*(1-h) + h*w2).double()
-
-
-
-def sine_weights_dot(t: float):
-    
-    w1 = torch.Tensor([[0,0],
-                       [0,1]]).double()
-    w2 = torch.Tensor([[1,0],
-                       [0,0]]).double()
-    return (-w1/(T) + w2/(T)).double()
-
-    
-
-
 if __name__ == "__main__":
     #test_diff()
     T = 10
     L = 10
     N = 250
-    print(rho_grad_x(1,1))
-    params = TimevaryingParams(sine_weights,sine_weights_dot)
-    means = sine_means()
-    f_d = GridGMM(means,params,L)
-    solver = ContEQSolver(L,f_d,N)
+    solver = ContEQSolver(L,N)
     x= torch.tensor([30,10]).double()
     solver.solve_rho(0.1)
     #solver.solve_pytorch(t=0.1)
