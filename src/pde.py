@@ -21,41 +21,6 @@ class ContEQSolver:
         self.xs = np.linspace(0,L,N+1)
         self.ys = np.linspace(0,L,N+1)
 
-    def solve_sparse(self,t: float):
-        cols,rows = self.N+1, self.N+1
-        
-        Dx = scipy.sparse.diags([1, -1], [2, 0], shape=(cols - 2, cols)).tocsc()
-        Dy = scipy.sparse.diags([1, -1], [2, 0], shape=(rows-2, rows)).tocsc()
-        diag = scipy.sparse.diags([1], [1], shape=(cols-2, cols)).tocsc()
-        dx = scipy.sparse.kron(diag,Dx)/(self.h*2)
-        dy = scipy.sparse.kron(Dy,diag)/(self.h*2) 
-        
-        #borderconditions Bg = 0
-        border_grid = np.zeros((rows,cols))
-        border_grid[:,0]=1
-        border_grid[:,-1]=1
-        border_grid[0,:]=1
-        border_grid[-1,:]=1
-        B_numpy = np.diag(border_grid.flatten())
-        B_numpy = B_numpy[~np.all(B_numpy == 0, axis=1)]
-        B = scipy.sparse.csc_matrix(B_numpy)
-        
-        #extend to both grids
-        Border = scipy.sparse.block_diag((B,B))
-        #div = DIV@[g1;g2]
-        DIV = scipy.sparse.hstack([dx,dy])
-        #solve Ax=B
-        #create A
-        A = scipy.sparse.vstack([DIV,Border])
-        #create B
-        B = np.zeros(A.shape[0])
-        xx,yy = np.meshgrid(self.xs[1:-1],self.ys[1:-1])
-        Rho_dot = dot(xx,yy)
-        B[:Rho_dot.size] = -Rho_dot.flatten()
-
-        g_vec = scipy.sparse.linalg.lsqr(A,B)[0]
-        self.G1 = g_vec[:rows*cols].reshape(rows,cols)
-        self.G2 = g_vec[rows*cols:].reshape(rows,cols)
 
     def get_spars_AB(self):
         cols,rows = self.N+1, self.N+1
@@ -128,7 +93,7 @@ class ContEQSolver:
         return A,B
 
 
-    def solve_rho(self,t: float):
+    def solve(self,t: float):
         rows,cols = self.N+1,self.N+1
         A,B = self.get_spars_AB()
         v_vec = scipy.sparse.linalg.lsqr(A,B)[0]
