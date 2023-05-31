@@ -2,15 +2,18 @@ import torch
 import math
 import numpy as np
 
+
 from densities import GridGMM,GaussianPDF,TimevaryingParams
 from fields import LarsField, VelocityField
-from sim import sim, viz
+from sim import sim
+from viz import viz_sim,viz_vectorfield
+
 
 def sine_means() -> torch.Tensor:
-    u1 = torch.tensor([L/3,L/3])
+    u1 = torch.tensor([3,6])
     u2 = torch.tensor([L/3,L-L/3])
     u3 = torch.tensor([L-L/3,L-L/3])
-    u4 =  torch.tensor([L-L/3,L/3])
+    u4 =  torch.tensor([6,3])
     means = torch.zeros(2,2,2)
     means[0,0,:] = u2
     means[0,1,:] = u3
@@ -19,45 +22,62 @@ def sine_means() -> torch.Tensor:
     return means
 
 def sine_weights(t: float) -> torch.Tensor:
-    omega = 1/(T-t_start)*math.pi
-    w1_0=0
-    w2_0=1
-    w3_0=0
-    w4_0=1
+    #omega = 1/(T-t_start)*math.pi
+    #w1_0=0
+    #w2_0=1
+    #w3_0=0
+    #w4_0=1
+    #if t < t_start:
+    #    h = 0
+    #else: h = t-t_start
+    #w2_t = w2_0*(math.sin(omega/2*h))**2
+    #w1_t = w1_0*(math.cos(omega/2*h))**2
+    #w3_t = w3_0*(math.sin(omega/2*h))**2
+    #w4_t = w4_0*(math.cos(omega/2*h))**2
+    #return torch.tensor([[w2_t,w3_t],
+    #                     [w1_t,w4_t]]).double()
+    w1 = torch.Tensor([[0,0],[0,1]]).double()
+    w2 = torch.Tensor([[1,0],[0,0]]).double()
+
     if t < t_start:
-        h = 0
-    else: h = t-t_start
-    w2_t = w2_0*(math.sin(omega/2*h))**2
-    w1_t = w1_0*(math.cos(omega/2*h))**2
-    w3_t = w3_0*(math.sin(omega/2*h))**2
-    w4_t = w4_0*(math.cos(omega/2*h))**2
-    return torch.tensor([[w2_t,w3_t],
-                         [w1_t,w4_t]]).double()
+        return w1
+    h=(t-t_start)/(T-t_start)
+    return (w1*(1-h) + h*w2).double()
 
 def sine_weights_dot(t: float):
-    omega = 1/(T-t_start)*2*math.pi
-    w1_0=0
-    w2_0=1
-    w3_0=0
-    w4_0=1
-    if t < t_start:
-        h = 0
-    else: h = t-t_start
-    w2_t_dot = w2_0*omega*math.sin(omega/2*h)*math.cos((omega/2*h))
-    w1_t_dot = -w1_0*omega*math.sin(omega/2*h)*math.cos((omega/2*h))
-    w3_t_dot = w3_0*omega*math.sin(omega/2*h)*math.cos((omega/2*h))
-    w4_t_dot = -w4_0*omega*math.sin(omega/2*h)*math.cos((omega/2*h))
-    return torch.tensor([[w2_t_dot,w3_t_dot],
-                         [w1_t_dot,w4_t_dot]]).double()
+    #omega = 1/(T-t_start)*2*math.pi
+    #w1_0=0
+    #w2_0=1
+    #w3_0=0
+    #w4_0=1
+#
+    #if t < t_start:
+    #    return torch.zeros(2,2).double()
+    #else: h = t-t_start
+    #w2_t_dot = w2_0*omega*math.sin(omega/2*h)*math.cos((omega/2*h))
+    #w1_t_dot = -w1_0*omega*math.sin(omega/2*h)*math.cos((omega/2*h))
+    #w3_t_dot = w3_0*omega*math.sin(omega/2*h)*math.cos((omega/2*h))
+    #w4_t_dot = -w4_0*omega*math.sin(omega/2*h)*math.cos((omega/2*h))
+    #return torch.tensor([[w2_t_dot,w3_t_dot],
+    #                     [w1_t_dot,w4_t_dot]]).double()
 
+
+    if t < t_start:
+        return torch.zeros(2,2).double()
+    
+    w1 = torch.Tensor([[0,0],
+                       [0,1]]).double()
+    w2 = torch.Tensor([[1,0],
+                       [0,0]]).double()
+    return (-w1/(T-t_start) + w2/(T-t_start)).double()
 
 
 
 if __name__ == "__main__":
     
     N=100
-    L=6
-    T = 5.5
+    L=9
+    T = 10
     h = L/20
     D = 5
     t_start = 5
@@ -85,12 +105,21 @@ if __name__ == "__main__":
 
     LF = LarsField(f_d,h,D)
     VF = VelocityField(f_d,h,D)
-    
-    X0 = L*torch.rand(N, 2)
-    t_eval = np.linspace(0, T, math.ceil(T)*5+1, endpoint=True)
-    t,y = sim(LF,X0,t_eval)
 
-    print("sim done")
-    viz(t,y,L,'test_sine_LF')
+    t_eval = np.linspace(0, T, T*5+1, endpoint=True)
+
+    field = f_d.g
+    #print(field(5,(torch.tensor([L-L/3,L/3])+1).double()))
+    
+    viz_vectorfield(field,t=t_eval,L=L,num_points=50)
+
+
+    
+    #X0 = L*torch.rand(N, 2)
+    #
+    #t,y = sim(LF,X0,t_eval)
+
+    #print("sim done")
+    #viz_sim(t,y,L,'test_sine_LF')
 
 

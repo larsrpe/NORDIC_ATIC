@@ -199,7 +199,16 @@ class GridGMM(TimevaryingPDF):
         exp = 1/(2*math.pi*self.var)*torch.exp(-1/(2*self.var)*square_dist)
         norm_dist = dist/square_dist.view(n,1)
         g = (norm_dist*exp).T@weights_dot_t
-        return g
+        #return g
+        g1 = 0
+        g2 =0
+        for i in range(n):
+            d1 = x[0]-means[i,0]
+            d2 = x[1]-means[i,1]
+            sq = d1**2 + d2**2
+            g1+= weights_dot_t[i]*math.exp(-1/2*sq)*d1/sq
+            g2+= weights_dot_t[i]*math.exp(-1/2*sq)*d2/sq
+        return torch.tensor([g1,g2])
     
     def get_g_and_grad(self, t: float, x: torch.Tensor) -> Tuple[torch.Tensor,torch.Tensor]:
         means,weights_t,weights_dot_t= self.get_nn(t,x)
