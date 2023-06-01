@@ -1,7 +1,4 @@
-import torch
-from torch import nn
 import numpy as np
-import cvxpy as cp
 import scipy
 from matplotlib import pyplot as plt
 from typing import Tuple
@@ -20,7 +17,7 @@ class ContEQSolver:
     L: dimension of the square domain(grid)
     Rho: array of shape (N+1,N+1) where N+1 Rho_ij corresponds to rho evaluated at x = L/N*j and y = L/N*i 
     Rho_dot: array of shape (N+1,N+1) where N+1 Rho_dot_ij corresponds to rho_dot evaluated at x = L/N*j and y = L/N*i
-    Rho_grad: array of shape (N+1,N+1,2) where N+1 Rho_ij corresponds to the spatial gradient of eho evaluated at x = L/N*j and y = L/N*i 
+    Rho_grad: array of shape (N+1,N+1,2) where N+1 Rho_ij corresponds to the spatial gradient of rho evaluated at x = L/N*j and y = L/N*i 
     """
     
     def __init__(self,L: float, Rho: np.ndarray,Rho_dot: np.ndarray, Rho_grad: np.ndarray) -> None:
@@ -168,6 +165,8 @@ class ContEQSolver:
 
 if __name__ == "__main__":
 
+    #example of use
+
     def dot(x,y) -> float:
         p1 = 0.9
         p2 = 0.1
@@ -222,7 +221,7 @@ if __name__ == "__main__":
 
     xx,yy,uu,vv = solver.get_field(n=50)
     plt.quiver(xx,yy,uu,vv)
-    plt.savefig("./images/fd_pde_test_rebase.jpg")
+    plt.savefig("./images/fd_pde_test.jpg")
     solver.check_sol()
 
 
