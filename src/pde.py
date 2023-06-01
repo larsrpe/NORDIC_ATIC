@@ -7,22 +7,39 @@ from matplotlib import pyplot as plt
 from typing import Tuple
 import math
 
-from densities import TimevaryingPDF, TimevaryingParams, GridGMM
-
-
 
 class ContEQSolver:
-    def __init__(self,L: float,N:int) -> None:
+    """
+    PDE solver that solves the continuety equation:
+
+    DIV(rho*v) = -rho_dot => rho_dx*v1 + rho_dy*v2 + rho*DIV(v) = -rho_dot
+    
+    for a velocity field V=[V1;V2] on a square domain given the density 'Rho',
+    its temporal derivative 'Rho_dot' and its gradient 'Rho_grad' evaluated at the domian at some time t.
+        
+    L: dimension of the square domain(grid)
+    Rho: array of shape (N+1,N+1) where N+1 Rho_ij corresponds to rho evaluated at x = L/N*j and y = L/N*i 
+    Rho_dot: array of shape (N+1,N+1) where N+1 Rho_dot_ij corresponds to rho_dot evaluated at x = L/N*j and y = L/N*i
+    Rho_grad: array of shape (N+1,N+1,2) where N+1 Rho_ij corresponds to the spatial gradient of eho evaluated at x = L/N*j and y = L/N*i 
+    """
+    
+    def __init__(self,L: float, Rho: np.ndarray,Rho_dot: np.ndarray, Rho_grad: np.ndarray) -> None:
         self.L = L
-        self.N = N
+        self.N = Rho.shape[0]
         self.h = L/N
-        self.G1 = cp.Variable((N+1,N+1))
-        self.G2 = cp.Variable((N+1,N+1))
+        self.V1 = None
+        self.V2 = None
+
+        self.Rho = Rho
+        self.Rho_dot = Rho_dot
+        self.Rho_grad = Rho_grad
         self.xs = np.linspace(0,L,N+1)
         self.ys = np.linspace(0,L,N+1)
 
 
     def get_spars_AB(self):
+        "calculates the system matrixes Ax=B for every grid point using central differences as gradient approximation."
+
         cols,rows = self.N+1, self.N+1
         xx,yy = np.meshgrid(self.xs[1:-1],self.ys[1:-1])
         
