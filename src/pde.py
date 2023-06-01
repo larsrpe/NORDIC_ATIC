@@ -113,7 +113,7 @@ class ContEQSolver:
         return A,B
 
 
-    def solve(self,t: float):
+    def solve(self):
         rows,cols = self.N+1,self.N+1
         A,B = self.get_spars_AB()
         v_vec = scipy.sparse.linalg.lsqr(A,B)[0]
@@ -218,7 +218,7 @@ if __name__ == "__main__":
     Rho_grad = np.concatenate((rho_grad_x(xx,yy).reshape(N+1,N+1,1),rho_grad_y(xx,yy).reshape(N+1,N+1,1)),axis=2)
     
     solver = ContEQSolver(L,Rho,Rho_dot,Rho_grad)
-    solver.solve(0.1)
+    solver.solve()
 
     xx,yy,uu,vv = solver.get_field(n=50)
     plt.quiver(xx,yy,uu,vv)
