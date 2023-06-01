@@ -15,6 +15,8 @@ from typing import Callable, Tuple
 from functools import cached_property
 from torchvision import transforms
 
+from densities import TimevaryingParams
+
 class TimevaryingParams(nn.Module):
     def __init__(self,param_t: Callable[[float], torch.Tensor], param_dot: Callable[[float], torch.Tensor]) -> None:
         super().__init__()
@@ -37,12 +39,7 @@ class TimevaryingPDF(nn.Module,ABC):
     @abstractmethod
     def dot(self,t: float, x: torch.Tensor) -> torch.Tensor:
         pass
-    @abstractmethod
-    def g(self,t: float, x: torch.Tensor) -> torch.Tensor:
-        pass
-    @abstractmethod
-    def get_g_and_grad(self,t: float, x: torch.Tensor) -> Tuple[torch.Tensor,torch.Tensor]:
-        pass
+    
 
 
 
@@ -83,31 +80,77 @@ class GaussianPDF:
     def dot(self,t: float,x: torch.Tensor) -> torch.Tensor:
         return torch.dot(self.grad(t,x),self._mu_dot(t))
     
-    def g(self,t: float,x: torch.Tensor) -> torch.Tensor:
-        g = self.eval(t,x)
-        return g
-    
-    def get_g_and_grad(self,t: float,x: torch.Tensor) -> Tuple[torch.Tensor,torch.Tensor]:
-        f = self.eval(t,x)
-        mu = self._mu(t)
-        mu_dot= self._mu_dot(t)
-        grad = -(x-mu)/self.var*f
-        g = f*mu_dot
-        return g,grad
-        
-    
-
-class GridGMM(TimevaryingPDF):
-    def __init__(self,means: torch.Tensor,weights: TimevaryingParams,L: float) -> None:
+class GMM(TimevaryingPDF):
+    def __init__(self,means: torch.Tensor,weights: TimevaryingParams,sigma: float = 1) -> None:
         super().__init__()
-        self.L = L
         self.means = means
         self.weights = weights
         self.N,_,self.d = means.shape
-        self.sima_pixels = 8
-        sigma = self.sima_pixels*(L/self.N)
-        sigma = 1
+        self.sigma = sigma
         self.var = sigma**2
+
+    def get_nn(self,t: float, x: torch.Tensor) -> Tuple[torch.Tensor,torch.Tensor,torch.Tensor]:
+        return self.means,self.weights.eval(t),self.weights.dot(t)
+
+    def eval(self, t: float, x: torch.Tensor) -> torch.Tensor:
+        means,weights_t,_= self.get_nn(t,x)
+        n = means.shape[0]
+        dist = x - means
+        square_dist = torch.bmm(dist.view(n, 1, self.d), dist.view(n, self.d, 1)).flatten()
+        return torch.dot(1/(2*math.pi*self.var)*torch.exp(-1/(2*self.var)*square_dist),weights_t)
+    
+    def dot(self, t: float, x: torch.Tensor) -> torch.Tensor:
+        means,_,weights_dot_t= self.get_nn(t,x)
+        n = means.shape[0]
+        dist = x - means
+        square_dist = torch.bmm(dist.view(n, 1, self.d), dist.view(n, self.d, 1)).flatten()
+        return torch.dot(1/(2*math.pi)*torch.exp(-1/2*square_dist),weights_dot_t)
+        
+
+    def grad(self, t: float, x: torch.Tensor) -> torch.Tensor:
+        means,weights_t,_= self.get_nn(t,x)
+        n = means.shape[0]
+        dist = x - means
+        square_dist = torch.bmm(dist.view(n, 1, self.d), dist.view(n, self.d, 1)).reshape(-1,1)
+        exp = 1/(2*math.pi*self.var)*torch.exp(-1/(2*self.var)*square_dist)
+        return -1/self.var*(exp*dist).T@weights_t
+        
+
+    def plot(self,t:float,xs: np.ndarray,ys:np.ndarray,filename: str):
+        points = len(xs)
+        z = torch.zeros(points,points)
+        for j,x in enumerate(xs):
+            for i,y in enumerate(ys):
+                z[points-1-i,j] = self.eval(t,torch.tensor([x,y]).double())
+        z = z.numpy()
+        plt.matshow(z)
+        plt.savefig("./images/"+filename)
+
+    
+        
+    
+
+class GridGMM(GMM):
+    def __init__(self, means: torch.Tensor, weights: TimevaryingParams,L: float, sigma_pixels: int =4) -> None:
+        self.L = L
+        self.N,_,self.d = means.shape
+        sigma = self.sima_pixels*(L/self.N)
+        super().__init__(means, weights, sigma)
+
+
+
+
+
+    #def __init__(self,means: torch.Tensor,weights: TimevaryingParams,L: float) -> None:
+    #    super().__init__()
+    #    self.L = L
+    #    self.means = means
+    #    self.weights = weights
+    #    self.N,_,self.d = means.shape
+    #    self.sima_pixels = 8
+    #    sigma = self.sima_pixels*(L/self.N)
+    #    sigma = 1
+    #    self.var = sigma**2
        
     @classmethod
     def from_image(cls,image: str,L: float) -> "GridGMM":
@@ -168,69 +211,11 @@ class GridGMM(TimevaryingPDF):
         weights_dot_t = self.weights.dot(t)
         return self.means[y_min:y_max,x_min:x_max].reshape(-1,2), weights_t[y_min:y_max,x_min:x_max].reshape(-1), weights_dot_t[y_min:y_max,x_min:x_max].reshape(-1)
 
-    def eval(self, t: float, x: torch.Tensor) -> torch.Tensor:
-        means,weights_t,_= self.get_nn(t,x)
-        n = means.shape[0]
-        dist = x - means
-        square_dist = torch.bmm(dist.view(n, 1, self.d), dist.view(n, self.d, 1)).flatten()
-        return torch.dot(1/(2*math.pi*self.var)*torch.exp(-1/(2*self.var)*square_dist),weights_t)
     
-    def dot(self, t: float, x: torch.Tensor) -> torch.Tensor:
-        means,_,weights_dot_t= self.get_nn(t,x)
-        n = means.shape[0]
-        dist = x - means
-        square_dist = torch.bmm(dist.view(n, 1, self.d), dist.view(n, self.d, 1)).flatten()
-        return torch.dot(1/(2*math.pi)*torch.exp(-1/2*square_dist),weights_dot_t)
-        
-
-    def grad(self, t: float, x: torch.Tensor) -> torch.Tensor:
-        means,weights_t,_= self.get_nn(t,x)
-        n = means.shape[0]
-        dist = x - means
-        square_dist = torch.bmm(dist.view(n, 1, self.d), dist.view(n, self.d, 1)).reshape(-1,1)
-        exp = 1/(2*math.pi*self.var)*torch.exp(-1/(2*self.var)*square_dist)
-        return -1/self.var*(exp*dist).T@weights_t
-        
-    def g(self, t: float, x: torch.Tensor) -> torch.Tensor:
-        means,_,weights_dot_t= self.get_nn(t,x)
-        n = means.shape[0]
-        dist = x - means
-        square_dist = torch.bmm(dist.view(n, 1, self.d), dist.view(n, self.d, 1)).reshape(-1,1)
-        exp = 1/(2*math.pi*self.var)*torch.exp(-1/(2*self.var)*square_dist)
-        norm_dist = dist/square_dist.view(n,1)
-        g = (norm_dist*exp).T@weights_dot_t
-        #return g
-        g1 = 0
-        g2 =0
-        for i in range(n):
-            d1 = x[0]-means[i,0]
-            d2 = x[1]-means[i,1]
-            sq = d1**2 + d2**2
-            g1+= weights_dot_t[i]*math.exp(-1/2*sq)*d1/sq
-            g2+= weights_dot_t[i]*math.exp(-1/2*sq)*d2/sq
-        return torch.tensor([g1,g2])
-    
-    def get_g_and_grad(self, t: float, x: torch.Tensor) -> Tuple[torch.Tensor,torch.Tensor]:
-        means,weights_t,weights_dot_t= self.get_nn(t,x)
-        n = means.shape[0]
-        dist = x - means
-        square_dist = torch.bmm(dist.view(n, 1, self.d), dist.view(n, self.d, 1)).reshape(-1,1)
-        exp = 1/(2*math.pi*self.var)*torch.exp(-1/(2*self.var)*square_dist)
-        grad = -1/self.var*(exp*dist).T@weights_t
-        norm_dist = dist/square_dist.view(n,1)
-        g = (norm_dist*exp).T@weights_dot_t
-        return g,grad
-
     def plot(self,t:float,points: int,filename: str):
         xs = torch.linspace(0,self.L,steps=points)
         ys = torch.linspace(0,self.L,steps=points)
-        z = torch.zeros(points,points)
-        for j,x in enumerate(xs):
-            for i,y in enumerate(ys):
-                z[points-1-i,j] = self.eval(t,torch.tensor([x,y]).double())
-        z = z.numpy()
-        plt.matshow(z)
-        plt.savefig("./images/"+filename)
+        super().plot(t,xs,ys,filename)
 
     def plot_grid(self):
         zs = np.zeros(self.N*self.N)
