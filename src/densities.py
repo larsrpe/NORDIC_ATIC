@@ -15,8 +15,6 @@ from typing import Callable, Tuple
 from functools import cached_property
 from torchvision import transforms
 
-from densities import TimevaryingParams
-
 class TimevaryingParams(nn.Module):
     def __init__(self,param_t: Callable[[float], torch.Tensor], param_dot: Callable[[float], torch.Tensor]) -> None:
         super().__init__()
@@ -85,9 +83,9 @@ class GMM(TimevaryingPDF):
         super().__init__()
         self.means = means
         self.weights = weights
-        self.N,_,self.d = means.shape
         self.sigma = sigma
         self.var = sigma**2
+        self.d = means.shape[-1]
 
     def get_nn(self,t: float, x: torch.Tensor) -> Tuple[torch.Tensor,torch.Tensor,torch.Tensor]:
         return self.means,self.weights.eval(t),self.weights.dot(t)
@@ -139,18 +137,6 @@ class GridGMM(GMM):
 
 
 
-
-
-    #def __init__(self,means: torch.Tensor,weights: TimevaryingParams,L: float) -> None:
-    #    super().__init__()
-    #    self.L = L
-    #    self.means = means
-    #    self.weights = weights
-    #    self.N,_,self.d = means.shape
-    #    self.sima_pixels = 8
-    #    sigma = self.sima_pixels*(L/self.N)
-    #    sigma = 1
-    #    self.var = sigma**2
        
     @classmethod
     def from_image(cls,image: str,L: float) -> "GridGMM":
