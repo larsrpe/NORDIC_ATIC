@@ -4,9 +4,9 @@ import matplotlib.pyplot as plt
 
 from sys import path
 from scipy.integrate import solve_ivp
-from fields import ControlField
 
 path.append(".")
+from src.densitycontrollers import DensityController
 
 from scipy.integrate._ivp.base import OdeSolver  # this is the class we will monkey patch
 
@@ -49,13 +49,13 @@ OdeSolver.step = new_step
 
 
 
-def dXdt(t: float, X: np.ndarray, Field: ControlField,h) -> np.ndarray:
+def dXdt(t: float, X: np.ndarray, controller: DensityController,h) -> np.ndarray:
     
     X = X.reshape(-1,2)
     X = torch.from_numpy(X)
     dXdt = np.empty_like(X)
     for i,x in enumerate(X):
-        dXdt[i,:] = gradclip(Field(t,x,X).numpy(),np.inf)
+        dXdt[i,:] = gradclip(controller.get_contoll(t,x,X).numpy(),np.inf)
     return dXdt.reshape(-1)
 
 
@@ -63,7 +63,7 @@ def gradclip(grad: np.ndarray, max: float) -> np.ndarray:
     norm = np.linalg.norm(grad)
     return grad if norm<max else grad/norm*max 
 
-def sim(Field: ControlField, X0: torch.Tensor, t_eval: np.ndarray) -> np.ndarray:
-    sol = solve_ivp(dXdt, y0=X0.reshape(-1), t_span=(0,t_eval[-1]), args=(Field,1), method="RK23", t_eval=t_eval)
+def sim(controller: DensityController, X0: torch.Tensor, t_eval: np.ndarray) -> np.ndarray:
+    sol = solve_ivp(dXdt, y0=X0.reshape(-1), t_span=(0,t_eval[-1]), args=(controller,1), method="RK23", t_eval=t_eval)
     return sol.t,sol.y
 

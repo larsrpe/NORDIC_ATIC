@@ -23,22 +23,21 @@ class ContEQSolver:
     def __init__(self,L: float, Rho: np.ndarray,Rho_dot: np.ndarray, Rho_grad: np.ndarray) -> None:
         self.L = L
         self.N = Rho.shape[0]-1
-        self.h = L/N
+        self.h = L/self.N
         self.V1 = None
         self.V2 = None
 
         self.Rho = Rho
         self.Rho_dot = Rho_dot
         self.Rho_grad = Rho_grad
-        self.xs = np.linspace(0,L,N+1)
-        self.ys = np.linspace(0,L,N+1)
+        self.xs = np.linspace(0,L,self.N+1)
+        self.ys = np.linspace(0,L,self.N+1)
 
 
     def get_spars_AB(self):
         "calculates the system matrixes Ax=B for every grid point using central differences as gradient approximation."
 
         cols,rows = self.N+1, self.N+1
-        xx,yy = np.meshgrid(self.xs[1:-1],self.ys[1:-1])
         
         Dx = scipy.sparse.diags([1, -1], [2, 0], shape=(cols - 2, cols)).tocsc()
         Dy = scipy.sparse.diags([1, -1], [2, 0], shape=(rows-2, rows)).tocsc()
@@ -110,10 +109,14 @@ class ContEQSolver:
         return A,B
 
 
-    def solve(self):
+    def solve(self,x0: np.ndarray=None):
         rows,cols = self.N+1,self.N+1
         A,B = self.get_spars_AB()
-        v_vec = scipy.sparse.linalg.lsqr(A,B)[0]
+
+        if x0 is not None:
+            v_vec = scipy.sparse.linalg.lsqr(A,B,x0=x0)[0]
+        else: v_vec = scipy.sparse.linalg.lsqr(A,B)[0]
+
         self.V1 = v_vec[:rows*cols].reshape(rows,cols)
         self.V2 = v_vec[rows*cols:].reshape(rows,cols)
 
@@ -219,7 +222,7 @@ if __name__ == "__main__":
     solver = ContEQSolver(L,Rho,Rho_dot,Rho_grad)
     solver.solve()
 
-    xx,yy,uu,vv = solver.get_field(n=50)
+    xx,yy,uu,vv = solver.get_field(n=N)
     plt.quiver(xx,yy,uu,vv)
     plt.savefig("./images/fd_pde_test.jpg")
     solver.check_sol()

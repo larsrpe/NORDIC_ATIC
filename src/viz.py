@@ -32,7 +32,7 @@ def viz_sim(t,y,L,file_name = "test"):
     anim = FuncAnimation(fig, partial(animate,Y=y), init_func = init,
                      frames = len(t), interval = 20, blit = True)
   
-    writer = FFMpegWriter(fps = 5)
+    writer = FFMpegWriter(fps = 20)
     anim.save(f'sims/{file_name}.mp4',writer = writer)
 
 
