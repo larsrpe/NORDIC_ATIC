@@ -59,7 +59,8 @@ class LarsField(ControlField):
         phi_grad = torch.autograd.grad(f_hat,r)[0] - f_d_grad
         V = -self.D*phi_grad
         
-        return ((V + ff*f_d)/f_hat).detach()
+        #print(t,ff,f_d)
+        return ((V + ff)/f_hat).detach()
     
   
     

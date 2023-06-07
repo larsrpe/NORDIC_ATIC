@@ -26,6 +26,8 @@ class ContEQSolver:
         self.h = L/self.N
         self.V1 = None
         self.V2 = None
+        self.G1 = None
+        self.G2 = None
 
         self.Rho = Rho
         self.Rho_dot = Rho_dot
@@ -105,8 +107,23 @@ class ContEQSolver:
         B = np.zeros(A.shape[0])
         rho_dot = self.Rho_dot[1:self.N,1:self.N]
         B[:rho_dot.size] = -rho_dot.flatten()
-        
-        return A,B
+
+
+        #cost matrix 
+        #costdx =  scipy.sparse.block_diag((dx,dx))
+        #costdy =  scipy.sparse.block_diag((dy,dy))
+        #C_sqrt = scipy.sparse.vstack([costdx,costdy])
+        #C = (C_sqrt.transpose())@C_sqrt 
+        #scipy.sparse.linalg.inv(C)
+        ##scipy.sparse.linalg.inv(A)
+        #KKTmat1 = scipy.sparse.hstack([C,A.transpose()],format='csc')
+        #zeros = scipy.sparse.csc_matrix(np.zeros((A.shape[0],A.shape[0])))
+        #KKTmat2 = scipy.sparse.hstack([A,zeros],format='csc')
+        #KKTmat = scipy.sparse.vstack([KKTmat1,KKTmat2],format='csc')
+        #KKTvec = np.zeros(KKTmat.shape[0])
+        #KKTvec[C.shape[1]:] = B
+        #print(A.shape)
+        return A,B,#KKTmat,KKTvec
 
 
     def solve(self,x0: np.ndarray=None):
@@ -117,8 +134,24 @@ class ContEQSolver:
             v_vec = scipy.sparse.linalg.lsqr(A,B,x0=x0)[0]
         else: v_vec = scipy.sparse.linalg.lsqr(A,B)[0]
 
+        self.G1 = (v_vec[:rows*cols]*self.Rho.flatten()).reshape(rows,cols)
+        self.G2 = (v_vec[rows*cols:]*self.Rho.flatten()).reshape(rows,cols)
+        
         self.V1 = v_vec[:rows*cols].reshape(rows,cols)
         self.V2 = v_vec[rows*cols:].reshape(rows,cols)
+    
+    def solve2(self):
+        rows,cols = self.N+1,self.N+1
+        _,_,KKTmat,KKTvec = self.get_spars_AB()
+
+        x = scipy.sparse.linalg.spsolve(KKTmat,KKTvec)[0]
+        v_vec =x[:rows*cols]
+        self.G1 = (v_vec[:rows*cols]*self.Rho.flatten()).reshape(rows,cols)
+        self.G2 = (v_vec[rows*cols:]*self.Rho.flatten()).reshape(rows,cols)
+        
+        self.V1 = v_vec[:rows*cols].reshape(rows,cols)
+        self.V2 = v_vec[rows*cols:].reshape(rows,cols)
+
 
     def check_sol(self):
         for i in range(1,self.N):
@@ -210,20 +243,34 @@ if __name__ == "__main__":
         
     T = 10
     L = 10
-    N = 100
+    N = 50
+
+    from densities import GridGMM
+    import torch
+
+    f_d = GridGMM.showtime('lena','roy_safari',(256,256),0,T,L,sigma_pixels=2)
 
     xs = np.linspace(0,L,N+1)
     ys = np.linspace(0,L,N+1)
-    xx,yy = np.meshgrid(xs,ys)
-    Rho = rho_f(xx,yy)
-    Rho_dot = dot(xx,yy)
-    Rho_grad = np.concatenate((rho_grad_x(xx,yy).reshape(N+1,N+1,1),rho_grad_y(xx,yy).reshape(N+1,N+1,1)),axis=2)
+
+    Rho = np.zeros((N+1,N+1))
+    Rho_dot = np.zeros((N+1,N+1))
+    Rho_grad = np.zeros((N+1,N+1,2))
+    t = 1
+    for i,x in enumerate(xs):
+        for j,y in enumerate(ys):
+            r = torch.Tensor([x.item(),y.item()]).double()
+            Rho[j,i] = f_d.eval(t,r).item()
+            Rho_dot[j,i] = f_d.dot(t,r).item()
+            Rho_grad[j,i,:] =f_d.grad(t,r).numpy()
+    #Rho_dot = dot(xx,yy)
+    #Rho_grad = np.concatenate((rho_grad_x(xx,yy).reshape(N+1,N+1,1),rho_grad_y(xx,yy).reshape(N+1,N+1,1)),axis=2)
     
     solver = ContEQSolver(L,Rho,Rho_dot,Rho_grad)
     solver.solve()
-
+#
     xx,yy,uu,vv = solver.get_field(n=N)
-    plt.quiver(xx,yy,uu,vv)
+    plt.quiver(xx,yy,uu,vv,scale=1)
     plt.savefig("./images/fd_pde_test.jpg")
     solver.check_sol()
 
