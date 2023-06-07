@@ -55,7 +55,7 @@ def dXdt(t: float, X: np.ndarray, controller: DensityController,h) -> np.ndarray
     X = torch.from_numpy(X)
     dXdt = np.empty_like(X)
     for i,x in enumerate(X):
-        dXdt[i,:] = gradclip(controller.get_contoll(t,x,X).numpy(),np.inf)
+        dXdt[i,:] = gradclip(controller.get_contoll(t,x,X).numpy(),3)
     return dXdt.reshape(-1)
 
 
