@@ -3,10 +3,10 @@ import math
 import numpy as np
 
 
-from densities import GridGMM,GaussianPDF,TimevaryingParams
-from densitycontrollers import GMMController,ImshowController,VideoController
-from fields import LarsField, VelocityField
-from sim import sim
+from densities import VideoGMM
+#from densitycontrollers import GMMController,ImshowController,VideoController
+#from fields import LarsField, VelocityField
+#from sim import sim
 from viz import viz_sim,viz_vectorfield,viz_sim_with_forces,viz_pdf
 
 
@@ -17,8 +17,8 @@ if __name__ == "__main__":
     
     N=300
     L=10
-    T = 3
-    t_start =1
+    T = 2
+    t_start =0
     h = L/20
     D = 5
 
@@ -36,25 +36,25 @@ if __name__ == "__main__":
     #controller = GMMController(means,w_start,w_end,t_start,t_end,h,D,L)
 
     #controller = ImshowController(t_start,t_end,h,D,L)
-    controller = VideoController(t_start,h,D,L)
-
-    def vectorfield(t,x):
-        return controller.get_feedforward(t,x) #*controller.f_d.eval(t,x)
+    ##def vectorfield(t,x):
+        #return controller.get_feedforward(t,x) #*controller.f_d.eval(t,x)
 
     
-    controller.f_d.plot(t=0,points=300,filename='wm_plot')
-    
-    
-    X0 = torch.tensor([4,L])*torch.rand(N, 2) + torch.tensor([3,0])
-    t_eval = np.linspace(0,T,int(20*T)+1)
-    viz_vectorfield(vectorfield,t_eval,L,65,"man_walking_ff_test")
-    viz_pdf(controller.f_d.eval,t_eval,L,100,"man_walking_test")
-    t,y = sim(controller,X0,t_eval)
-    viz_sim(t,y,L,'man_walking_with_ff_test')
-    viz_sim_with_forces(t,vectorfield,y,L,'man_walking_with_ff_test')
-    
+    #controller.f_d.plot(t=0,points=300,filename='wm_plot')
 
-    
+    f_d = VideoGMM(t_start,L,resolution=(64,64))
+
+    #X0 = torch.tensor([4,L])*torch.rand(N, 2) + torch.tensor([3,0])
+    t_eval = np.linspace(0,T,int(5*T)+1)
+    ##viz_vectorfield(vectorfield,t_eval,L,65,"man_walking_ff_test")
+    viz_pdf(f_d.eval,t_eval,L,50,"man_walking_test")
+    #t,y = sim(controller,X0,t_eval)
+    #viz_sim(t,y,L,'man_walking_with_ff_test')
+    #viz_sim_with_forces(t,vectorfield,y,L,'man_walking_with_ff_test')
+    #
+
+
+
     
 
 

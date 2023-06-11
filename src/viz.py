@@ -124,18 +124,19 @@ def viz_pdf(pdf: Callable[[float,torch.Tensor],torch.Tensor],t_eval,L,num_points
     
     def animate(i):
         t = t_eval[i]
-        xs = np.linspace(0,L,num_points)
-        ys = np.linspace(0,L,num_points)
+        xs = torch.linspace(0,L,num_points)
+        ys = torch.linspace(0,L,num_points)
         z = torch.zeros(num_points,num_points)
-        for j,x in enumerate(xs):
-            for i,y in enumerate(ys):
-                z[num_points-1-i,j] = pdf(t,torch.tensor([x,y]).double())
+        xx,yy = torch.meshgrid(xs,ys)
+        X = torch.concatenate((xx.reshape(-1,1),yy.reshape(-1,1))).double()
+        z = pdf(t,X).reshape(num_points,num_points)
         z = z.numpy()
         plt.clf()
+        print(i)
         return plt.imshow(z)
 
     anim = FuncAnimation(fig, animate,
                      frames = len(t_eval), interval = 20, blit = False)
   
-    writer = FFMpegWriter(fps = 20)
+    writer = FFMpegWriter(fps = 5)
     anim.save(f'sims/pdf_{file_name}.mp4',writer = writer)
