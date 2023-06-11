@@ -124,13 +124,14 @@ def viz_pdf(pdf: Callable[[float,torch.Tensor],torch.Tensor],t_eval,L,num_points
     
     def animate(i):
         t = t_eval[i]
-        xs = np.linspace(0,L,num_points)
-        ys = np.linspace(0,L,num_points)
+        xs = torch.linspace(0,L,num_points)
+        ys = torch.linspace(0,L,num_points)
         z = torch.zeros(num_points,num_points)
-        for j,x in enumerate(xs):
-            for i,y in enumerate(ys):
-                z[num_points-1-i,j] = pdf(t,torch.tensor([x,y]).double())
-        z = z.numpy()
+        xx,yy = torch.meshgrid(xs,ys)
+
+        X = torch.concatenate((yy.flatten()[:,None],xx.flatten()[:,None]),axis=1).double()
+        z = pdf(t,X).reshape(num_points,num_points)
+        z = z.numpy()[::-1,:]
         plt.clf()
         return plt.imshow(z)
 
