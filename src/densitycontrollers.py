@@ -35,7 +35,7 @@ class GausianController(DensityController):
     def __init__(self,L,h,D,t_start,t_end,use_ff:bool= True) -> None:
         self.m0 = torch.tensor([L/2,L/4*1.2])
         self.m1 = torch.tensor([L/2,3*L/4])
-        self.mdot = 1/(t_start-t_end)*(self.m1-self.m0).double()
+        self.mdot = 1/(t_end-t_start)*(self.m1-self.m0).double()
         self.t_start=t_start
         self.t_end = t_end
         self.use_ff = use_ff
@@ -75,8 +75,7 @@ class GausianController(DensityController):
         if not (self.t_start < t < self.t_end):
             return torch.zeros(2)
         f =self.fd.eval(r)
-        #need to investigate this -1 
-        return -f*self.mdot
+        return f*self.mdot
         
         
         
