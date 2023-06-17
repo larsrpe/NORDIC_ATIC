@@ -3,30 +3,42 @@ import cvxpy as cp
 import scipy
 import numpy as np
 import pickle
-from typing import List
+from typing import List,Tuple
+import cv2 as cv
+
+from image_utils import image_to_pdf_args
+from PIL import Image
 
 
 
 
 class GMMInterpolator:
 
-    def __init__(self,t_start: float,dt: float,ps: List[torch.Tensor], ms: List[torch.Tensor],sigma=1) -> None:
+    def __init__(self,t_start: float,dt: float,ps: List[torch.Tensor], ms: List[torch.Tensor]) -> None:
         self.t_start = t_start
         self.dt = dt
         self.num_poinst = len(ps)
         self.t_end = t_start + dt*self.num_poinst
         self.ps = ps
         self.ms = ms
-        self.var = sigma**2
-    
         self.PIs: List[torch.Tensor] = []
 
+    def extend(self, x: int):
+        self.ms*=x
+        self.PIs*=x
+        self.ps*=x
+        self.num_poinst = len(self.ps)
+    def speedup(self,x:int):
+        self.dt/=x
+        self.t_end = self.t_start + self.dt*self.num_poinst
+    
+    def interpolate(self): 
         for i in range(self.num_poinst-1):
-            p0 = ps[i]
-            p1 = ps[i+1]
-            m0 = ms[i]
-            m1 = ms[i+1]
-            self.PIs.append(self.iterpolate_between1(p0,p1,m0,m1))
+            p0 = self.ps[i]
+            p1 = self.ps[i+1]
+            m0 = self.ms[i]
+            m1 = self.ms[i+1]
+            self.PIs.append(self.iterpolate_between(p0,p1,m0,m1))
         
         print("interpolation done")
 
@@ -34,37 +46,6 @@ class GMMInterpolator:
     def iterpolate_between(self,p0: torch.Tensor,p1: torch.Tensor,m0: torch.Tensor,m1: torch.Tensor) -> torch.Tensor:
         N0 = m0.shape[0]
         N1 = m1.shape[0]
-        PI = cp.Variable((N0,N1))
-        C = torch.cdist(m0,m1).numpy()**2
-
-        cost = 0
-        constr = []
-
-        eta = 1e2
-
-        constr.append(cp.sum(PI, axis=1) == p0.numpy())
-        constr.append(cp.sum(PI[:,:-1], axis=0) == p1.numpy()[:-1])
-        constr +=[PI>=0]
-        cost += eta*(cp.sum(PI[:,-1])-p1.numpy()[-1])**2
-        cost += cp.sum(cp.multiply(PI,C))
-        #cost += cp.norm1(PI)
-        
-        
-
-        problem = cp.Problem(cp.Minimize(cost),constr)
-        problem.solve(verbose=True,solver='SCS',eps_abs=1e-4, eps_rel=1e-4)
-        print(problem.status)
-
-        pi = PI.value
-        print("res=", np.linalg.norm(pi.sum(axis=1)-p0.numpy()) + np.linalg.norm(pi.sum(axis=0)-p1.numpy()))
-        print("sum=", pi.sum())
-        print("sparsity:", (pi[pi>0]).size)
-        return torch.from_numpy(PI.value)
-    
-    def iterpolate_between1(self,p0: torch.Tensor,p1: torch.Tensor,m0: torch.Tensor,m1: torch.Tensor) -> torch.Tensor:
-        N0 = m0.shape[0]
-        N1 = m1.shape[0]
-        print(N0,N1)
         c = torch.cdist(m0,m1).numpy().flatten()**2
 
         diag = scipy.sparse.diags([1], [0], shape=(N0, N0)).tocsc()
@@ -83,13 +64,18 @@ class GMMInterpolator:
        
         solved = False
         i = 0
+
+        A_cons.resize(A_cons.shape[0]-1,A_cons.shape[1]) #remove one row for better numrical proparties
+        B_cons = B_cons[:-1]
+
         while not solved:
             print(i)
             i+=1
-            A_cons.resize(A_cons.shape[0]-1,A_cons.shape[1]) #remove one row for better numrical proparties
-            B_cons = B_cons[:-1]
             sol = scipy.optimize.linprog(c,A_eq=A_cons, b_eq=B_cons, method='highs')
             solved =sol.success
+            if not solved:
+                A_cons.resize(A_cons.shape[0]-4,A_cons.shape[1]) #remove one 4row for better numrical proparties
+                B_cons = B_cons[:-4]
             
 
         print(sol.message)
@@ -105,7 +91,7 @@ class GMMInterpolator:
 
 
 
-    def get_weights(self,t: float,x,y) -> torch.Tensor:
+    def get_weights(self,t: float) -> torch.Tensor:
 
         t = t-self.t_start
         time_step = int(t/self.dt)
@@ -122,7 +108,7 @@ class GMMInterpolator:
         return PI
 
     
-    def get_means(self,t: float,x,y) -> torch.Tensor:
+    def get_means(self,t: float) -> torch.Tensor:
         t = t-self.t_start
         
         time_step = int(t/self.dt)
@@ -146,17 +132,71 @@ class GMMInterpolator:
 
         return means.double()
     
-    def save(self,filename: str):
-        picklefile = open(f'./data/+{filename}', 'wb')
-        pickle.dump(self, picklefile)
-        picklefile.close()
+    def get_means_dot(self,t: float) -> torch.Tensor:
+        t = t-self.t_start
+        
+        time_step = int(t/self.dt)
+        if time_step < 0:
+            time_step = 0
+            t=0
+        elif time_step >= self.num_poinst-2:
+            time_step = self.num_poinst-3
+            t = time_step*self.dt
+
+        PI = self.PIs[time_step].flatten()
+        idx = PI>0
+        m0 = self.ms[time_step]
+        m1 = self.ms[time_step+1]
+        h_dot = 1/self.dt
+    
+        means_dot_x = (-h_dot*(m0[:,0]).reshape(1,-1) + h_dot*(m1[:,0]).reshape(-1,1)).flatten()[idx]
+        means_dot_y = (-h_dot*(m0[:,1]).reshape(1,-1) + h_dot*(m1[:,1]).reshape(-1,1)).flatten()[idx]
+
+        means_dot = torch.concatenate((means_dot_x[:,None],means_dot_y[:,None]),axis=1)
+
+        return means_dot.double()
+    
+    def save_coeff(self,filename: str):
+        str = f'./data/{filename}.pt'
+        torch.save(self.PIs,str)
+    
+
+    def load_coeff(self,filename: str) -> "GMMInterpolator":
+        str = f'./data/{filename}.pt'
+        pis=torch.load(str)
+        self.PIs = pis
+        
     
     @classmethod
-    def load_from_file(cls,filename: str) -> "GMMInterpolator":
-        picklefile = open(f'./data/{filename}', 'wb')
-        x = pickle.load(picklefile)
-        picklefile.close()
-        return x
+    def walking_man(cls,t_start:float,L:int,resolution: Tuple[int,int]= (128,128)) -> "GMMInterpolator":
+        pil_frames = []
+        video_T = 2#sec
+        cap = cv.VideoCapture('./videos/man_walking.mp4')
+        started = False
+        
+        while(cap.isOpened()):
+            ret, frame = cap.read()
+            if ret == True:
+                started = True
+                pil_frames.append(Image.fromarray(np.uint8(frame)))
+            if not ret and started:
+                break
+        
+        pil_frames = pil_frames[::2]
+        dt = video_T/(len(pil_frames)-1)
+        ps = []
+        ms = [] 
+        ps = []
+        ms = [] 
+        for frame in pil_frames:
+            means,p = image_to_pdf_args(frame,L,resolution)
+            p = p.reshape(-1).double()
+            m = means.reshape(-1,2).double()
+            ps.append(p)
+            ms.append(m)
+
+        return cls(t_start,dt,ps,ms)
+
 
         
     

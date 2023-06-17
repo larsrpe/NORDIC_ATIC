@@ -50,12 +50,12 @@ OdeSolver.step = new_step
 
 
 def dXdt(t: float, X: np.ndarray, controller: DensityController,h) -> np.ndarray:
-    
     X = X.reshape(-1,2)
     X = torch.from_numpy(X)
     dXdt = np.empty_like(X)
+    controller.update_refrence(t)
     for i,x in enumerate(X):
-        dXdt[i,:] = gradclip(controller.get_contoll(t,x,X).numpy(),3)
+        dXdt[i,:] = gradclip(controller.get_contoll(t,x,X).numpy(),np.inf)
     return dXdt.reshape(-1)
 
 

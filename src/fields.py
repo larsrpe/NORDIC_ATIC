@@ -53,7 +53,6 @@ class LarsField(ControlField):
         """
         
         f_d_grad = self.f_d.grad(t,r)
-        f_d = self.f_d.eval(t,r)
         r = Variable(r.clone(),requires_grad=True)
         f_hat = self.KDE(r,X)
         phi_grad = torch.autograd.grad(f_hat,r)[0] - f_d_grad

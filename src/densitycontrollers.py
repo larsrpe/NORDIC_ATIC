@@ -9,10 +9,14 @@ from sys import path
 
 path.append('.')
 from src.fields import ControlField,LarsField,VelocityField
-from src.densities import GMM,TimevaryingParams,GridGMM, TimevaryingPDF
-from src.pde import ContEQSolver
+from src.densities import GMM,TimevaryingParams
+from src.gmminterpolator import GMMInterpolator
 
 class DensityController(ABC):
+
+    @abstractmethod
+    def update_refrence(self,t:float) -> None:
+        pass
 
     @abstractmethod
     def get_contoll(self, t: float, r: torch.Tensor, X: torch.Tensor) -> torch.Tensor:
@@ -24,134 +28,111 @@ class DensityController(ABC):
         returns the velocity field at r
         """
 
-class PDEFeedforwardController(DensityController):
-    def __init__(self,t_start: float,t_end: float, h: float,D: float, L:float) -> None:
-        super().__init__()
-        self.L =L
-        self.t_start = t_start
+
+class GausianController(DensityController):
+    "controller for tracking moving gausian"
+    def __init__(self,L,h,D,t_start,t_end,use_ff:bool= True) -> None:
+        m0 = torch.tensor([L/2,L/4*1.2])
+        m1 = torch.tensor([L/2,3*L/4])
+        self.mdot = 1/(t_start-t_end)*(m1-m0).double()
+        
+        def weights(t):
+            return torch.tensor([1]).double()
+        def means(t):
+            if t < t_start:
+                return m0.view(1,2).double()
+            if t> t_end:
+                return m1.view(1,2).double()
+            
+            h = (t-t_start)/(t_end-t_start)
+            return ((1-h)*m0 + h*m1).view(1,2).double()
+        
+        params_weights =TimevaryingParams(weights,None)
+        params_means = TimevaryingParams(means,None)
+        self.fd = GMM(params_weights,params_means,sigma=1)
+        self.LarsField = LarsField(self.fd,h,D)
+        self.t_start=t_start
         self.t_end = t_end
-        #the feed forward is calculated solving a pde so wee need to define the spatial resolution of the solver
-        self.solver_N = 100
-        #Due to expensive computing of the feedforward term we keep it constant over small intervalls of time instead of updating it continously
-        self.ff_calculation_interwall = 0.025
-        self.ff_t: List[np.ndarray]= []
-        self.f_d: TimevaryingPDF = None
-        self.LF: LarsField = None
+        self.use_ff = use_ff
+    
+    def update_refrence(self, t: float) -> None:
+        self.fd.update_params(t)
+        self.LarsField.fd=self.fd
+
+     
+    def get_contoll(self, t: float, r: torch.Tensor, X: torch.Tensor) -> torch.Tensor:
+        ff = self.get_feedforward(t,r)
+        return self.LarsField(t,r,X,ff)
+    
+    def get_feedforward(self,t:float,x:torch.Tensor) -> torch.Tensor:
+        if not self.use_ff:
+            return torch.zeros(2)
+        if not (self.t_start < t < self.t_end):
+            return torch.zeros(2)
+        f =self.fd.eval(t,x)
+        return -f*self.mdot
+        
+        
+        
+    
+
+
+        
+
+        
+
+
+
+class WalkingManController(DensityController):
+    "controller for tracking the walking man"
+
+    def __init__(self,L: float,h:float,D:float,sigma_pixels=1,t_start=1,resolution=(32,32),use_ff: bool = True) -> None:
+        self.gmminterpolator = GMMInterpolator.walking_man(t_start,L,resolution=resolution)
+        try:
+            self.gmminterpolator.load_coeff(f'resolution{resolution[0]}')
+        except: 
+            self.gmminterpolator.interpolate()
+            self.gmminterpolator.save_coeff(f"resolution{resolution[0]}")
+        
+        #repeat three times
+        self.gmminterpolator.extend(5*5)
+        
+        #make 4 times faster
+        self.gmminterpolator.speedup(10)
+
+        params_weights =TimevaryingParams(self.gmminterpolator.get_weights,None)
+        params_means = TimevaryingParams(self.gmminterpolator.get_means,None)
+
+        sigma = sigma_pixels*L/resolution[0]
+        self.fd = GMM(params_weights,params_means,sigma)
+
+        self.LarsField = LarsField(self.fd,h,D)
+        self.means_dot = None
+        self.use_ff = use_ff
+        self.t_start = t_start
+
+    def update_refrence(self, t: float) -> None:
+        self.fd.update_params(t)
+        self.LarsField.fd=self.fd
+        self.means_dot = self.gmminterpolator.get_means_dot(t)
 
 
     def get_contoll(self, t: float, r: torch.Tensor, X: torch.Tensor) -> torch.Tensor:
-        """
-        r: Tensor of shape
-        X: Tensor of shape N,d with all sampels 
-        ff: feedforward gain
-
-        returns the velocity field at r
-        """
-
         ff = self.get_feedforward(t,r)
-        return self.LF(t,r,X,ff)
+        return self.LarsField(t,r,X,ff)
 
-    
-    def get_feedforward(self,t:float,x: torch.Tensor) -> torch.Tensor:
-
-        if not self.t_start <= t < self.t_end:
+    def get_feedforward(self,t:float,x:torch.Tensor) -> torch.Tensor:
+        if not self.use_ff:
             return torch.zeros(2)
-        
-        i = int(self.solver_N/self.L*x[0])+1 
-        j = int(self.solver_N/self.L*x[1])+1
-        t_idx = int((t-self.t_start)/self.ff_calculation_interwall)
 
-        if i > self.solver_N:
-            i = self.solver_N
-        elif i < 0:  
-            i = 0
-
-        if j > self.solver_N:
-            j = self.solver_N
-        elif j < 0:  
-            j = 0
-        return torch.from_numpy(self.ff_t[t_idx][j,i])
-
-    def calculate_feedforward(self) -> np.ndarray:
-        N = self.solver_N
-        xs = torch.linspace(0,self.L,N+1)
-        ys = torch.linspace(0,self.L,N+1)
-        ts = np.arange(self.t_start,self.t_end,self.ff_calculation_interwall)
-        
-        Rho = np.zeros((N+1,N+1))
-        Rho_dot = np.zeros((N+1,N+1))
-        Rho_grad = np.zeros((N+1,N+1,2))
-
-        x0 = np.zeros((N+1)**2*2) #initial guess for the solver
-
-        for t in ts:
-            for i,x in enumerate(xs):
-                for j,y in enumerate(ys):
-                    r = torch.Tensor([x.item(),y.item()]).double()
-                    Rho[j,i] = self.f_d.eval(t,r).item()
-                    Rho_dot[j,i] = self.f_d.dot(t,r).item()
-                    Rho_grad[j,i,:] = self.f_d.grad(t,r).numpy()
+        if t < self.gmminterpolator.t_start:
+            return torch.zeros(2)
+        comps = self.fd.get_components(t,x)
+        means_dot = self.means_dot
+        return -(means_dot.T)@comps
 
 
-            
-            solver = ContEQSolver(self.L,Rho,Rho_dot,Rho_grad)
-            print("solving pde...")
-            solver.solve(x0)
-            print(f"solved pde at timestep {t}")
-            self.ff_t.append(np.concatenate((solver.G1.reshape(N+1,N+1,1),solver.G2.reshape(N+1,N+1,1)),axis=2))
-            X0 = np.concatenate((solver.V1.flatten(),solver.V2.flatten()))
 
-    
-
-            
-
-class GMMController(PDEFeedforwardController):
-    "Controller for tracking gaussian mixtures with time varying weights"
-    def __init__(self,means: torch.Tensor, weights_start: torch.Tensor, weights_end: torch.Tensor, t_start: float, t_end: float, h: float, D: float, L: float) -> None:
-        super().__init__(t_start, t_end, h, D, L)
-        
-        def param_weights(t:float)-> torch.Tensor:
-            if t <=t_start:
-                return weights_start.double()
-            if t > t_end:
-                return weights_end.double()
-            
-            return ((1 - (t-t_start)/(t_end-t_start)) * weights_start + (t-t_start)/(t_end-t_start) * weights_end).double()
-
-        def param_weights_dot(t:float)-> torch.Tensor:
-            if t <=t_start:
-                return torch.zeros_like(weights_start).double()
-            if t > t_end:
-                return torch.zeros_like(weights_end).double()
-        
-            return (-1/(t_end-t_start) * weights_start + (t)/(t_end-t_start) * weights_end).double()
-        
-
-        self.f_d = GMM(means,TimevaryingParams(param_weights,param_weights_dot),sigma=1)
-        self.LF = LarsField(self.f_d,h,D)
-        self.calculate_feedforward()
-
-
-        
-        
-class ImshowController(PDEFeedforwardController):
-    "Controller for tracking interpolation between to images"
-    def __init__(self, t_start: float, t_end: float, h: float, D: float, L: float) -> None:
-        super().__init__(t_start, t_end, h, D, L)
-        self.f_d = GridGMM.showtime('lena','roy_safari',(256,256),t_start,t_end,L,5)
-        self.LF = LarsField(self.f_d,h,D)
-        self.calculate_feedforward()
-        
-
-        
-
-class VideoController(PDEFeedforwardController):
-    "Controller for tracking video"
-    def __init__(self, t_start: float, h: float, D: float, L: float) -> None:
-        super().__init__(t_start, t_start+2, h, D, L)
-        self.f_d = GridGMM.from_video(t_start,L)
-        self.LF = LarsField(self.f_d,h,D)
-        self.calculate_feedforward()
     
     
         
