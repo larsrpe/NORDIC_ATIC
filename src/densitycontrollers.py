@@ -2,14 +2,14 @@ import torch
 import numpy as np
 from typing import List
 
-from abc import ABC,abstractmethod,abstractproperty
+from abc import ABC,abstractmethod
 
 
 from sys import path
 
 path.append('.')
 from src.fields import ControlField,LarsField,VelocityField
-from src.densities import GMM,TimevaryingParams
+from src.densities import GMM,GMMParams
 from src.gmminterpolator import GMMInterpolator
 
 class DensityController(ABC):
@@ -30,46 +30,52 @@ class DensityController(ABC):
 
 
 class GausianController(DensityController):
-    "controller for tracking moving gausian"
+    "controller for illustrating tracking of a moving gausian"
+    
     def __init__(self,L,h,D,t_start,t_end,use_ff:bool= True) -> None:
-        m0 = torch.tensor([L/2,L/4*1.2])
-        m1 = torch.tensor([L/2,3*L/4])
-        self.mdot = 1/(t_start-t_end)*(m1-m0).double()
-        
-        def weights(t):
-            return torch.tensor([1]).double()
-        def means(t):
-            if t < t_start:
-                return m0.view(1,2).double()
-            if t> t_end:
-                return m1.view(1,2).double()
-            
-            h = (t-t_start)/(t_end-t_start)
-            return ((1-h)*m0 + h*m1).view(1,2).double()
-        
-        params_weights =TimevaryingParams(weights,None)
-        params_means = TimevaryingParams(means,None)
-        self.fd = GMM(params_weights,params_means,sigma=1)
-        self.LarsField = LarsField(self.fd,h,D)
+        self.m0 = torch.tensor([L/2,L/4*1.2])
+        self.m1 = torch.tensor([L/2,3*L/4])
+        self.mdot = 1/(t_start-t_end)*(self.m1-self.m0).double()
         self.t_start=t_start
         self.t_end = t_end
         self.use_ff = use_ff
+
+        self.fd = GMM(self.get_gmm_params(0),sigma=1)
+        self.LarsField = LarsField(self.fd,h,D)
+        
+
+    def get_gmm_params(self,t:float) -> GMMParams:
+        
+        w = torch.tensor([1]).double()
+        
+        if t < self.t_start:
+            means = self.m0.view(1,2).double()
+        elif t> self.t_end:
+            means = self.m1.view(1,2).double()
+            
+        else:
+            h = (t-self.t_start)/(self.t_end-self.t_start)
+            means = ((1-h)*self.m0 + h*self.m1).view(1,2).double()
+        
+        return GMMParams(means=means,weights=w)
     
     def update_refrence(self, t: float) -> None:
-        self.fd.update_params(t)
-        self.LarsField.fd=self.fd
+        """method to update the reference of the swarm at the beginning of each timestep"""
+        self.fd.set_params(self.get_gmm_params(t))
+        self.LarsField.f_d=self.fd
 
      
     def get_contoll(self, t: float, r: torch.Tensor, X: torch.Tensor) -> torch.Tensor:
         ff = self.get_feedforward(t,r)
         return self.LarsField(t,r,X,ff)
     
-    def get_feedforward(self,t:float,x:torch.Tensor) -> torch.Tensor:
+    def get_feedforward(self,t:float,r:torch.Tensor) -> torch.Tensor:
         if not self.use_ff:
             return torch.zeros(2)
         if not (self.t_start < t < self.t_end):
             return torch.zeros(2)
-        f =self.fd.eval(t,x)
+        f =self.fd.eval(r)
+        #need to investigate this -1 
         return -f*self.mdot
         
         
@@ -78,11 +84,6 @@ class GausianController(DensityController):
 
 
         
-
-        
-
-
-
 class WalkingManController(DensityController):
     "controller for tracking the walking man"
 
@@ -100,20 +101,25 @@ class WalkingManController(DensityController):
         #make 4 times faster
         self.gmminterpolator.speedup(10)
 
-        params_weights =TimevaryingParams(self.gmminterpolator.get_weights,None)
-        params_means = TimevaryingParams(self.gmminterpolator.get_means,None)
+
 
         sigma = sigma_pixels*L/resolution[0]
-        self.fd = GMM(params_weights,params_means,sigma)
+        self.fd = GMM(self.get_gmm_params(0),sigma)
 
         self.LarsField = LarsField(self.fd,h,D)
         self.means_dot = None
         self.use_ff = use_ff
         self.t_start = t_start
 
+    def get_gmm_params(self,t:float) -> GMMParams:
+        w = self.gmminterpolator.get_weights(t)
+        m = self.gmminterpolator.get_means(t)
+        return GMMParams(means=m,weights=w)
+
     def update_refrence(self, t: float) -> None:
-        self.fd.update_params(t)
-        self.LarsField.fd=self.fd
+        """method to update the reference of the swarm at the beginning of each timestep"""
+        self.fd.set_params(self.get_gmm_params(t))
+        self.LarsField.f_d=self.fd
         self.means_dot = self.gmminterpolator.get_means_dot(t)
 
 
@@ -127,7 +133,7 @@ class WalkingManController(DensityController):
 
         if t < self.gmminterpolator.t_start:
             return torch.zeros(2)
-        comps = self.fd.get_components(t,x)
+        comps = self.fd.get_components(x)
         means_dot = self.means_dot
         return -(means_dot.T)@comps
 

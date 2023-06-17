@@ -21,6 +21,25 @@ class Gaussian_KDE(nn.Module):
         K_vec = torch.exp(-2/(self.h**2)*torch.square(dist_vec))*2/torch.pi
         f_hat =  1/(N*self.h**d)*torch.sum(K_vec,dim=0)
         return f_hat
+    
+    def estimate_batch(self, R: torch.Tensor, X: torch.Tensor) -> torch.Tensor:
+        """
+        R: Tensor of shape B,d 
+        X: Tensor of shape N,d with all sampels 
+        retuns: estimated density at point r
+        """
+
+        N,d = X.shape
+        B = r.shape[0]
+        dist_vec =torch.cdist(R,X)
+        K_mat =torch.exp(-2/(self.h**2)*torch.square(dist_vec))*2/torch.pi
+        f_hat =  1/(N*self.h**d)*torch.sum(K_mat,dim=0)
+
+        return f_hat
+
+
+
+
 
 if __name__ == "__main__":
 

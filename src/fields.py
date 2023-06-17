@@ -10,12 +10,12 @@ from sys import path
 
 path.append(".")
 from src.kde import Gaussian_KDE
-from src.densities import TimevaryingPDF,TimevaryingParams,GMM
-from src.pde import ContEQSolver
+from src.densities import PDF
+
 
 
 class ControlField(nn.Module,ABC):
-    def __init__(self, f_d: TimevaryingPDF, h: float, D: float) -> None:
+    def __init__(self, f_d: PDF, h: float, D: float) -> None:
         super().__init__()
         self.f_d = f_d
         self.KDE = Gaussian_KDE(h)
@@ -37,7 +37,7 @@ class VelocityField(ControlField):
         """
         r = Variable(r.clone(),requires_grad=True)
         f_hat = self.KDE(r,X)
-        phi_grad = torch.autograd.grad(f_hat,r)[0] - self.f_d.grad(t,r)
+        phi_grad = torch.autograd.grad(f_hat,r)[0] - self.f_d.grad(r)
         return (-self.D*phi_grad/f_hat).detach()
 
 class LarsField(ControlField):
@@ -52,7 +52,7 @@ class LarsField(ControlField):
         returns the velocity field at r
         """
         
-        f_d_grad = self.f_d.grad(t,r)
+        f_d_grad = self.f_d.grad(r)
         r = Variable(r.clone(),requires_grad=True)
         f_hat = self.KDE(r,X)
         phi_grad = torch.autograd.grad(f_hat,r)[0] - f_d_grad
