@@ -60,7 +60,7 @@ class GMMInterpolator:
         #solve the optimization problem
         #this optimization problem is always feasable (use PI = p0p1')
         #however the constraint matrix A is rank deficient so numerically we might encounter infeasabilities
-        #this is solved by removing some of the constraints, since some ofthe are redundant 
+        #this is solved by removing some of the constraints, since some often are redundant 
         solved = False
         i = 0
         A_cons.resize(A_cons.shape[0]-1,A_cons.shape[1]) #remove one row for better numrical proparties
@@ -71,7 +71,7 @@ class GMMInterpolator:
             sol = scipy.optimize.linprog(c,A_eq=A_cons, b_eq=B_cons, method='highs')
             solved =sol.success
             if not solved:
-                A_cons.resize(A_cons.shape[0]-4,A_cons.shape[1]) #remove one 4row for better numrical proparties
+                A_cons.resize(A_cons.shape[0]-4,A_cons.shape[1]) #remove 4 rows for better numrical proparties
                 B_cons = B_cons[:-4]
         print(sol.message)
         pi_vec = sol.x
