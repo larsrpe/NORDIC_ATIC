@@ -2,7 +2,7 @@
 The annual nordic conference in advanced topics in control(ATIC). This it the repository for our project for the course **Advanced Topics in Control** at ETH spring 2023. Check out the project website for more information and visualizations: https://larsrpe.github.io/NORDIC_ATIC/
 
 # Requirements
-To run this you will need pytorch,numpy and scipy.
+To run this you will need pytorch,numpy,scipy and tqdm. You will also need matplotlib for visualizations.
 
 # Demonstration
 Running main.py will reproduce the results from the paper. To be able to run the walking man example you will need to download the mp4 video from here: and place it at:
@@ -17,3 +17,4 @@ data
 └── walking_man
     └── resolution64.pt
 ```
+To run the demonstration run python main.py. This will write some visualizations to the sims/ folder.
