@@ -1,5 +1,6 @@
 # NORDIC ATIC
 Our research on time-varying density control of robotic swarms for the annual **Nordic Conference in Advance Topics in Control (NCATIC)** 
+
 This it the repository for our project for the course **Advanced Topics in Control** at ETH spring 2023. Check out the [project website](https://larsrpe.github.io/NORDIC_ATIC/) for more information and visualizations.
 
 # Requirements
