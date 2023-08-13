@@ -6,13 +6,15 @@ To run this you will need pytorch,numpy and scipy.
 
 # Demonstration
 Running main.py will reproduce the results from the paper. To be able to run the walking man example you will need to download the mp4 video from here: and place it at:
-'''
+```
 videos
 └── man_walking.mp4
-'''
+´´´
 Note that he required interpolation is time consuming and not entirely stable. For convinience you can download the precomputed interpolation coeffs from here: and place the file at:
+```
 data
 └── walking_man
     └── resolution64.pt
+´´´
       
     
