@@ -9,20 +9,9 @@ Running main.py will reproduce the results from the paper. To be able to run the
 ```
 videos
 └── man_walking.mp4
+```
 
 Note that he required interpolation is time consuming and not entirely stable. For convinience you can download the precomputed interpolation coeffs from here: and place the file at:
-
-```
-data
-└── walking_man
-    └── resolution64.pt
-
-      
-    
-```
-videos
-└── man_walking.mp4
-```
 ```
 data
 └── walking_man
