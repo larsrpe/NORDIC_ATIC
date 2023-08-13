@@ -8,7 +8,7 @@ from src.gmminterpolator import GMMInterpolator
 from src.densities import GMM
 from src.viz import viz_sim,viz_pdf
 
-def demo_gassian():
+def demo_gaussian():
     N=50 #number of agents
     L=10 #size of domain
     T = 3 #end time
@@ -66,7 +66,7 @@ def demo_walking_man():
 if __name__ == "__main__":
     if not os.path.exists('sims'):
         os.mkdir('sims')
-    demo_gassian()
+    demo_gaussian()
     demo_walking_man()
 
    

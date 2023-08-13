@@ -1,18 +1,11 @@
-from typing import Tuple
-from numpy.typing import NDArray
 import torch
 import numpy as np
 import matplotlib.pyplot as plt
-
-from sys import path
 from scipy.integrate import solve_ivp
-
-path.append(".")
-from src.densitycontrollers import DensityController
-
 from scipy.integrate._ivp.base import OdeSolver  # this is the class we will monkey patch
-
 from tqdm import tqdm
+
+from src.densitycontrollers import DensityController
 
 ### monkey patching the ode solvers with a progress bar
 

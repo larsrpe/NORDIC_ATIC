@@ -1,15 +1,11 @@
-import torch
+from typing import Tuple
 from torch import Tensor
+
+import torch
 import torch.nn as nn
 import numpy as np
-from typing import List,Tuple
-
 from abc import ABC,abstractmethod
 
-
-from sys import path
-
-path.append('.')
 from src.densities import GMM
 from src.gmminterpolator import GMMInterpolator
 from src.kde import GaussianKDE as KDE
@@ -88,7 +84,6 @@ class GausianController(DensityController):
             
 class WalkingManController(DensityController):
     "controller for tracking the walking man"
-
     def __init__(self,L: float,h:float,D:float,sigma_pixels=1,t_start=1,resolution=(64,64),use_ff: bool = True) -> None:
         super().__init__()
         self.gmminterpolator = GMMInterpolator.walking_man(t_start,L,resolution=resolution)

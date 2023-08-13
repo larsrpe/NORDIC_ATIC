@@ -16,7 +16,6 @@ class GMM(nn.Module):
     def update_weights(self,p: torch.Tensor) -> None:
         self.weights = p.type_as(self.weights)
         
-    
     def eval(self, x: torch.Tensor) -> torch.Tensor:
         x = x.view(-1,self.d)
         dmat = torch.cdist(x,self.means)
@@ -38,12 +37,7 @@ class GMM(nn.Module):
         exp = 1/(2*math.pi*self.var)*torch.exp(-1/(2*self.var)*square_dist)
         return exp*self.weights
     
-    def grad_batch(self,x:torch.Tensor) -> torch.Tensor:
-        n = means.shape[0]
-        dist = x - means
-        square_dist = torch.bmm(dist.view(n, 1, self.d), dist.view(n, self.d, 1)).reshape(-1,1)
-        exp = 1/(2*math.pi*self.var)*torch.exp(-1/(2*self.var)*square_dist)
-        return -1/self.var*(exp*dist).T@weights
+   
 
 
 

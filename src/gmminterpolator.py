@@ -1,12 +1,13 @@
+from typing import List,Tuple
+
+import os
 import torch
 import scipy
 import numpy as np
-from typing import List,Tuple
 import cv2 as cv
-
-from src.image_utils import image_to_pdf_args
 from PIL import Image
 
+from src.image_utils import image_to_pdf_args
 
 class GMMInterpolator:
     def __init__(self,t_start: float,dt: float,ps: List[torch.Tensor], ms: List[torch.Tensor]) -> None:
@@ -107,6 +108,8 @@ class GMMInterpolator:
     
     def save_coeff(self,path: str):
         str = f'{path}.pt'
+        if not os.path.exists(os.path.dirname(str)):
+            os.mkdir(os.path.dirname(str))
         torch.save(self.PIs,str)
     def load_coeff(self,path: str) -> "GMMInterpolator":
         str = f'{path}.pt'

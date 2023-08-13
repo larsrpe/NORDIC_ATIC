@@ -1,11 +1,8 @@
+from typing import Tuple
 from PIL import Image, ImageOps
 import torch
 from torchvision import transforms
 import numpy as np
-
-from typing import Tuple
-
-
 
 def image_to_pdf_args(image:str, L: float,resolution: Tuple[int,int]= (128,128))-> Tuple[torch.Tensor,torch.Tensor]:
 
