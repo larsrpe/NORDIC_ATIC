@@ -20,10 +20,6 @@ data
       
     
 ```
-mkdir models
-
-models
-└── res101_handobj_100K
-    └── pascal_voc
-        └── faster_rcnn_1_8_132028.pth
+videos
+└── man_walking.mp4
 ```
