@@ -1,8 +1,9 @@
 import torch
 import numpy as np
-import matplotlib.pyplot as plt
 from scipy.integrate import solve_ivp
-from scipy.integrate._ivp.base import OdeSolver  # this is the class we will monkey patch
+from scipy.integrate._ivp.base import (
+    OdeSolver,
+)  # this is the class we will monkey patch
 from tqdm import tqdm
 
 from src.densitycontrollers import DensityController
@@ -13,13 +14,13 @@ from src.densitycontrollers import DensityController
 old_init = OdeSolver.__init__
 old_step = OdeSolver.step
 
+
 # define our own methods
 def new_init(self, fun, t0, y0, t_bound, vectorized, support_complex=False):
-
     # define the progress bar
-    self.pbar = tqdm(total=t_bound - t0, unit='ut', initial=t0, ascii=True, desc='IVP')
+    self.pbar = tqdm(total=t_bound - t0, unit="ut", initial=t0, ascii=True, desc="IVP")
     self.last_t = t0
-    
+
     # call the old method - we still want to do the old things too!
     old_init(self, fun, t0, y0, t_bound, vectorized, support_complex)
 
@@ -27,7 +28,7 @@ def new_init(self, fun, t0, y0, t_bound, vectorized, support_complex=False):
 def new_step(self):
     # call the old method
     old_step(self)
-    
+
     # update the bar
     tst = self.t - self.last_t
     self.pbar.update(tst)
@@ -43,21 +44,29 @@ OdeSolver.__init__ = new_init
 OdeSolver.step = new_step
 
 
-
-def dXdt(t: float, X: np.ndarray, controller: DensityController,h) -> np.ndarray:
-    X = X.reshape(-1,2)
+def dXdt(t: float, X: np.ndarray, controller: DensityController, h) -> np.ndarray:
+    X = X.reshape(-1, 2)
     X = torch.from_numpy(X)
     controller.update_measurment(X)
     dXdt = controller.get_contoll(t)
-    
+
     return dXdt.reshape(-1).cpu().numpy()
 
 
 def gradclip(grad: np.ndarray, max: float) -> np.ndarray:
     norm = np.linalg.norm(grad)
-    return grad if norm<max else grad/norm*max 
+    return grad if norm < max else grad / norm * max
 
-def sim(controller: DensityController, X0: torch.Tensor, t_eval: np.ndarray) -> np.ndarray:
-    sol = solve_ivp(dXdt, y0=X0.reshape(-1), t_span=(0,t_eval[-1]), args=(controller,1), method="RK23", t_eval=t_eval)
-    return sol.t,sol.y
 
+def sim(
+    controller: DensityController, X0: torch.Tensor, t_eval: np.ndarray
+) -> np.ndarray:
+    sol = solve_ivp(
+        dXdt,
+        y0=X0.reshape(-1),
+        t_span=(0, t_eval[-1]),
+        args=(controller, 1),
+        method="RK23",
+        t_eval=t_eval,
+    )
+    return sol.t, sol.y

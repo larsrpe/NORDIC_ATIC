@@ -3,8 +3,10 @@ Our research on time-varying density control of robotic swarms for the annual **
 
 This it the repository for our project for the course **Advanced Topics in Control** at ETH spring 2023. Check out the [project website](https://larsrpe.github.io/NORDIC_ATIC/) for more information and visualizations.
 
-# Requirements
-To run this you will need pytorch,numpy,scipy and tqdm. You will also need matplotlib for visualizations.
+# Install Requirements
+```
+pip install -r requirements.txt
+```
 
 # Demonstration
 Running main.py will reproduce the results from the paper. To be able to run the walking man example you have to download the mp4 video from this [link](https://drive.google.com/file/d/1ohfWxChmzC5f34ISOxV8MOEoUlAwDv7Q/view?usp=sharing) and place it at:
