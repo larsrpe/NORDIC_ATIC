@@ -1,5 +1,6 @@
 # NORDIC ATIC
-The annual nordic conference in advanced topics in control(ATIC). This it the repository for our project for the course **Advanced Topics in Control** at ETH spring 2023. Check out the [project website](https://larsrpe.github.io/NORDIC_ATIC/) for more information and visualizations.
+Our research on time-varying density control of robotic swarms for the annual **Nordic Conference in Advance Topics in Control (NCATIC)** 
+This it the repository for our project for the course **Advanced Topics in Control** at ETH spring 2023. Check out the [project website](https://larsrpe.github.io/NORDIC_ATIC/) for more information and visualizations.
 
 # Requirements
 To run this you will need pytorch,numpy,scipy and tqdm. You will also need matplotlib for visualizations.
@@ -19,4 +20,4 @@ data
 ```
 To run the demonstration run python main.py. This will write some visualizations to the sims/ folder.
 
-Note that for the **Nordic Conference in Advance Topics in Control** is purely fictional- for now, at least.
+Note that for the **Nordic Conference in Advance Topics in Control** is purely fictional and only excists in the authors minds- for now, at least.
