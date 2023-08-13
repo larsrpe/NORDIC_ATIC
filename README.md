@@ -1,5 +1,5 @@
 # NORDIC_ATIC
-The annual nordic conference in advanced topics in control(ATIC). This it the repository for our project for the course **Advanced Topics in Control** at ETH spring 2023. Check out the project website for more information and visualizations: https://larsrpe.github.io/NORDIC_ATIC/
+The annual nordic conference in advanced topics in control(ATIC). This it the repository for our project for the course **Advanced Topics in Control** at ETH spring 2023. Check out the [project website](https://larsrpe.github.io/NORDIC_ATIC/) for more information and visualizations.
 
 # Requirements
 To run this you will need pytorch,numpy,scipy and tqdm. You will also need matplotlib for visualizations.
