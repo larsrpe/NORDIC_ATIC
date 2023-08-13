@@ -21,4 +21,4 @@ data
 ```
 To run the demonstration run python main.py. This will write some visualizations to the sims/ folder.
 
-Note that for the **Nordic Conference in Advance Topics in Control** is purely fictional and only excists in the authors minds- for now, at least.
+Note that for the **Nordic Conference in Advance Topics in Control** is purely fictional and only excists in the minds of the authors- for now, at least.
