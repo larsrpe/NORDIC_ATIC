@@ -13,7 +13,7 @@ videos
 └── man_walking.mp4
 ```
 
-Note that he required interpolation is time consuming and not entirely stable. For convinience you can download the precomputed interpolation coefficients from here: and place the file at:
+Note that he required interpolation is time consuming and not entirely stable. For convinience you can download the precomputed interpolation coefficients from this [link](https://drive.google.com/file/d/1ohfWxChmzC5f34ISOxV8MOEoUlAwDv7Q/view?usp=sharing](https://drive.google.com/file/d/1MrFCiCpDs8wl264FPGL1QTCa88AL8O0v/view?usp=sharing) and place the file at:
 ```
 data
 └── walking_man
