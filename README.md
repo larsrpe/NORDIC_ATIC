@@ -23,3 +23,8 @@ data
 videos
 └── man_walking.mp4
 ```
+```
+data
+└── walking_man
+    └── resolution64.pt
+```
