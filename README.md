@@ -5,13 +5,13 @@ The annual nordic conference in advanced topics in control(ATIC). This it the re
 To run this you will need pytorch,numpy,scipy and tqdm. You will also need matplotlib for visualizations.
 
 # Demonstration
-Running main.py will reproduce the results from the paper. To be able to run the walking man example you will need to download the mp4 video from this [link](https://drive.google.com/file/d/1ohfWxChmzC5f34ISOxV8MOEoUlAwDv7Q/view?usp=sharing) and place it at:
+Running main.py will reproduce the results from the paper. To be able to run the walking man example you have to download the mp4 video from this [link](https://drive.google.com/file/d/1ohfWxChmzC5f34ISOxV8MOEoUlAwDv7Q/view?usp=sharing) and place it at:
 ```
 videos
 └── man_walking.mp4
 ```
 
-Note that he required interpolation is time consuming and not entirely stable. For convinience you can download the precomputed interpolation coeffs from here: and place the file at:
+Note that he required interpolation is time consuming and not entirely stable. For convinience you can download the precomputed interpolation coefficients from here: and place the file at:
 ```
 data
 └── walking_man
