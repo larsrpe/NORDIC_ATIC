@@ -1,0 +1,77 @@
+<html>
+
+<head>
+  <title>ATIC Examples</title>
+  <style>
+    body {
+      display: flex;
+      flex-direction: column;
+      justify-content: center;
+      align-items: center;
+      height: 100vh;
+    }
+
+    h1 {
+      font-size: 24px;
+      margin-bottom: 20px;
+    }
+
+    .grid-container {
+      display: grid;
+      grid-template-columns: repeat(4, 1fr);
+      grid-gap: 20px;
+    }
+
+    .video-container {
+      display: flex;
+      flex-direction: column;
+      justify-content: center;
+      align-items: center;
+    }
+
+    .video-title {
+      font-size: 18px;
+      margin-bottom: 10px;
+    }
+
+    video {
+      max-width: 100%;
+      height: auto;
+    }
+  </style>
+</head>
+
+<body>
+  <h1>Time-Varying Density Control for Large-Scale Multi-Agent Systems Using
+    Heat and Continuity Equation</h1>
+  <a href="assets/svarm.pdf">Paper</a>
+
+  <div class="grid-container">
+    <div class="video-container">
+      <h2 class="video-title">Gaussian without ff</h2>
+      <video controls autoplay loop>
+        <source src="assets/gaussian_wo_ff.mp4" type="video/mp4">
+      </video>
+    </div>
+    <div class="video-container">
+      <h2 class="video-title">Gaussian with ff</h2>
+      <video controls autoplay loop>
+        <source src="assets/gaussian_w_ff.mp4" type="video/mp4">
+      </video>
+    </div>
+    <div class="video-container">
+      <h2 class="video-title">Walking man without ff</h2>
+      <video controls autoplay loop onloadstart="this.playbackRate = 0.2">
+        <source src="assets/man_walking_wo_ff.mp4" type="video/mp4">
+      </video>
+    </div>
+    <div class="video-container">
+      <h2 class="video-title">Walking man with ff</h2>
+      <video controls autoplay loop onloadstart="this.playbackRate = 0.2">
+        <source src="assets/man_walking_w_ff.mp4" type="video/mp4">
+      </video>
+    </div>
+  </div>
+</body>
+
+</html>
