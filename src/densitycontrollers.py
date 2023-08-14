@@ -3,7 +3,6 @@ from torch import Tensor
 
 import torch
 import torch.nn as nn
-import numpy as np
 from abc import ABC, abstractmethod
 
 from src.densities import GMM
@@ -107,7 +106,13 @@ class WalkingManController(DensityController):
                 f"data/walking_man/resolution{resolution[0]}"
             )
         except:
-            print("computing interpolation coeffs, this might take a while...")
+            print(
+                "Could not find the interpolation coefficients and have to compute the. This might take a while..."
+            )
+            print(
+                "If this is not the desired behavior please download the precomputed coefficients as described in readme.md."
+            )
+
             self.gmminterpolator.interpolate()
             self.gmminterpolator.save_coeff(
                 f"data/walking_man/resolution{resolution[0]}"

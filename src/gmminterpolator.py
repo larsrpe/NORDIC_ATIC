@@ -121,10 +121,11 @@ class GMMInterpolator:
         return means, weights.to(torch.float32)
 
     def save_coeff(self, path: str):
-        str = f"{path}.pt"
-        if not os.path.exists(os.path.dirname(str)):
-            os.mkdir(os.path.dirname(str))
-        torch.save(self.PIs, str)
+        coeff_dir = os.path.join(os.getcwd(), os.path.dirname(path))
+        coeff_str = f"{os.getcwd()}/{path}.pt"
+        if not os.path.exists(coeff_dir):
+            os.makedirs(coeff_dir, exist_ok=True)
+        torch.save(self.PIs, coeff_str)
 
     def load_coeff(self, path: str) -> "GMMInterpolator":
         str = f"{path}.pt"
