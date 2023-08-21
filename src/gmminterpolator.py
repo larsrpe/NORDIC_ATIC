@@ -6,6 +6,7 @@ import scipy
 import numpy as np
 import cv2 as cv
 from PIL import Image
+from tqdm import tqdm
 
 from src.image_utils import image_to_pdf_args
 
@@ -38,14 +39,12 @@ class GMMInterpolator:
 
     def interpolate(self):
         "do the interpolation"
-        for i in range(self.num_poinst - 1):
+        for i in tqdm(range(self.num_poinst - 1), desc="computing interpolation coefficients", unit="step",total=self.num_poinst - 1):
             p0 = self.ps[i]
             p1 = self.ps[i + 1]
             m0 = self.ms[i]
             m1 = self.ms[i + 1]
             self.PIs.append(self._iterpolate_between(p0, p1, m0, m1))
-
-        print("interpolation done")
 
     def _iterpolate_between(
         self, p0: torch.Tensor, p1: torch.Tensor, m0: torch.Tensor, m1: torch.Tensor
@@ -75,7 +74,7 @@ class GMMInterpolator:
         )  # remove one row for better numrical proparties
         B_cons = B_cons[:-1]
         while not solved:
-            print(i)
+            #print(i)
             i += 1
             sol = scipy.optimize.linprog(c, A_eq=A_cons, b_eq=B_cons, method="highs")
             solved = sol.success
@@ -84,16 +83,16 @@ class GMMInterpolator:
                     A_cons.shape[0] - 4, A_cons.shape[1]
                 )  # remove 4 rows for better numrical proparties
                 B_cons = B_cons[:-4]
-        print(sol.message)
+        #print(sol.message)
         pi_vec = sol.x
-        idx = pi_vec == 0
+        #idx = pi_vec == 0
         pi = pi_vec.reshape(N0, N1)
-        print(
-            "res:",
-            np.linalg.norm(pi.sum(axis=1) - p0.numpy().flatten())
-            + np.linalg.norm(pi.sum(axis=0) - p1.numpy().flatten()),
-        )
-        print("sparse", len(pi_vec[idx]), "of", len(pi_vec))
+        #print(
+        #    "res:",
+        #    np.linalg.norm(pi.sum(axis=1) - p0.numpy().flatten())
+        #    + np.linalg.norm(pi.sum(axis=0) - p1.numpy().flatten()),
+        #)
+        #print("sparse", len(pi_vec[idx]), "of", len(pi_vec))
         return torch.from_numpy(pi)
 
     def get_params(self, t: torch.Tensor) -> Tuple[torch.Tensor, torch.Tensor]:

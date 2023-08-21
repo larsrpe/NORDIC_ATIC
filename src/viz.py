@@ -28,7 +28,7 @@ def viz_tracking(
         xs = torch.linspace(0, L, num_points)
         ys = torch.linspace(0, L, num_points)
         z = torch.zeros(num_points, num_points)
-        xx, yy = torch.meshgrid(xs, ys)
+        xx, yy = torch.meshgrid(xs, ys,indexing='ij')
 
         X = torch.concatenate(
             (yy.flatten()[:, None], xx.flatten()[:, None]), axis=1
@@ -180,7 +180,7 @@ def viz_pdf(
         xs = torch.linspace(0, L, num_points)
         ys = torch.linspace(0, L, num_points)
         z = torch.zeros(num_points, num_points)
-        xx, yy = torch.meshgrid(xs, ys)
+        xx, yy = torch.meshgrid(xs, ys,indexing='ij')
 
         X = torch.concatenate(
             (yy.flatten()[:, None], xx.flatten()[:, None]), axis=1
